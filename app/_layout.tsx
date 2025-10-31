@@ -2,6 +2,7 @@ import { SplashScreen, Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { useFonts, OpenSans_400Regular, OpenSans_700Bold, OpenSans_300Light } from '@expo-google-fonts/open-sans';
 import { ThemeProvider } from "../components/ThemeContext"
+import { DrawerProvider } from '@/components/DrawerContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -23,24 +24,26 @@ export default function RootLayout() {
     }
   return (
     <ThemeProvider>
-      <Stack
-      screenOptions={{
-        headerShown: false, 
-      }}
-    >
-      <Stack.Screen 
-        name="LoginScreen" 
-        options={{
-          headerShown: false,
+      <DrawerProvider>
+        <Stack
+        screenOptions={{
+          headerShown: false, 
         }}
-      />
-      <Stack.Screen 
-        name="(app)" 
-        options={{
-          headerShown: false,
-        }}
-      />
-    </Stack>
+      >
+          <Stack.Screen 
+            name="LoginScreen" 
+            options={{
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen 
+            name="(app)" 
+            options={{
+              headerShown: false,
+            }}
+          />
+        </Stack>
+      </DrawerProvider>
     </ThemeProvider>
   );
 }

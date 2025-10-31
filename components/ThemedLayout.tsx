@@ -9,6 +9,8 @@ import {
 import { useTheme } from './ThemeContext';
 import { Navbar, NavbarConfig } from './Navbar';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SideDrawer } from './SideDrawer';
+import { useDrawer } from './DrawerContext';
 
 interface ThemedLayoutProps {
   children: ReactNode;
@@ -22,10 +24,13 @@ export const ThemedLayout: React.FC<ThemedLayoutProps> = ({
   navbarConfig = {}
 }) => {
   const { theme, isLoading } = useTheme();
+  const { isDrawerOpen, closeDrawer, createSwipeHandler } = useDrawer();
+  
+  const swipeHandler = createSwipeHandler();
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.container, styles.container]}>
+      <SafeAreaView style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator size="large" color="#007AFF" />
       </SafeAreaView>
     );
@@ -37,9 +42,11 @@ export const ThemedLayout: React.FC<ThemedLayoutProps> = ({
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
+        {...swipeHandler.panHandlers}
       >
         {children}
       </KeyboardAvoidingView>
+      <SideDrawer isOpen={isDrawerOpen} onClose={closeDrawer} />
     </SafeAreaView>
   );
 };
@@ -47,6 +54,10 @@ export const ThemedLayout: React.FC<ThemedLayoutProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   keyboardView: {
     flex: 1,

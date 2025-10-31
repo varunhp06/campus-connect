@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   Platform,
-  Alert,
   Pressable,
 } from 'react-native';
 import { useTheme } from './ThemeContext';
+import { useDrawer } from './DrawerContext';
 
 export interface NavbarConfig {
   showHamburger?: boolean;
@@ -25,12 +25,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   onHamburgerPress 
 }) => {
   const { isDarkMode, toggleTheme, theme } = useTheme();
+  const { openDrawer } = useDrawer();
 
   const handleHamburgerPress = () => {
     if (onHamburgerPress) {
       onHamburgerPress();
     } else {
-      Alert.alert('Menu', 'Hamburger menu pressed');
+      openDrawer();
     }
   };
 
@@ -49,6 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               { opacity: pressed ? 0.5 : 1 }
             ]}
             onPress={handleHamburgerPress}
+            hitSlop={{ top: 20, bottom: 20, left: 30, right: 30 }}
           >
             <View style={styles.hamburger}>
               <View style={[styles.hamburgerLine1, { backgroundColor: theme.text }]} />
