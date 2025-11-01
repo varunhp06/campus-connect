@@ -10,6 +10,7 @@ import {
   Dimensions,
   ImageSourcePropType,
 } from 'react-native';
+import { router, Router } from 'expo-router';
 import { useTheme } from './ThemeContext';
 
 interface UtilityCard {
@@ -18,6 +19,7 @@ interface UtilityCard {
   description: string;
   icon: ImageSourcePropType;
   color: string;
+  route: string;
 }
 
 interface ActivityItem {
@@ -41,6 +43,7 @@ export const HomeContent: React.FC = () => {
       description: 'Late-night food orders delivered to your hostel after mess hours',
       icon: require('../assets/images/icons/night-delivery.png'),
       color: '#2196F3',
+      route: '/campus-utilities/NightDeliverySection'
     },
     {
       id: '2',
@@ -48,6 +51,7 @@ export const HomeContent: React.FC = () => {
       description: 'Sports hub for complaints, equipment requests, and event updates.',
       icon: require('../assets/images/icons/sports.png'),
       color: '#4CAF50',
+      route: '/campus-utilities/SportsSection'
     },
     {
       id: '3',
@@ -55,6 +59,7 @@ export const HomeContent: React.FC = () => {
       description: 'Enjoy casual rides around campus',
       icon: require('../assets/images/icons/cycle-rental.png'),
       color: '#FFC107',
+      route: '/campus-utilities/CycleSection'
     },
   ];
 
@@ -121,6 +126,13 @@ export const HomeContent: React.FC = () => {
                 opacity: pressed ? 0.7 : 1,
               }
             ]}
+            onPress={() => {
+              if (utility.route) {
+                router.push(utility.route);
+              } else {
+                alert('Coming soon 🚧');
+              }
+            }}
           >
             <View style={[styles.utilityBorder, { backgroundColor: utility.color }]} />
             <View>
