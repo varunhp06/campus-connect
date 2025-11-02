@@ -1,6 +1,6 @@
 import React from 'react';
 import { ThemedLayout } from '../../components/ThemedLayout';
-import { HomeContent } from '@/components/HomeContent';
+import { HomeContent } from "@/components/HomeContent"
 
 const HomeScreen: React.FC = () => {
   return (

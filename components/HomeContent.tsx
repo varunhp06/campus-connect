@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTheme } from './ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 
 interface UtilityCard {
   id: string;
@@ -34,7 +35,7 @@ export const HomeContent: React.FC = () => {
   const { theme } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'SPORTS' | 'CULT' | 'TECH' | 'ALL'>('SPORTS');
-  const [showAll, setShowAll] = useState(false);
+
   const utilities: UtilityCard[] = [
     {
       id: '1',
@@ -42,7 +43,7 @@ export const HomeContent: React.FC = () => {
       description: 'Late-night food orders delivered to your hostel after mess hours',
       icon: require('../assets/images/icons/night-delivery.png'),
       color: '#2196F3',
-      route: '/campus-utilities/NightDeliverySection'
+      route: '/campus-utilities/NightDeliverySection',
     },
     {
       id: '2',
@@ -50,7 +51,7 @@ export const HomeContent: React.FC = () => {
       description: 'Sports hub for complaints, equipment requests, and event updates.',
       icon: require('../assets/images/icons/sports.png'),
       color: '#4CAF50',
-      route: '/campus-utilities/SportsSection'
+      route: '/campus-utilities/SportsSection',
     },
     {
       id: '3',
@@ -58,7 +59,7 @@ export const HomeContent: React.FC = () => {
       description: 'Enjoy casual rides around campus',
       icon: require('../assets/images/icons/cycle-rental.png'),
       color: '#FFC107',
-      route: '/campus-utilities/CycleSection'
+      route: '/campus-utilities/CycleSection',
     },
   ];
 
@@ -78,21 +79,41 @@ export const HomeContent: React.FC = () => {
     { id: '7', date: '14', tab: 'CULT', month: 'OCT', title: 'Inter-College Dance Cup', description: 'City colleges compete in dance battles' },
   ];
 
-  const filteredActivities = selectedTab === 'ALL' ? activities : activities.filter((a) => a.tab === selectedTab);
-  const visibleActivities = showAll ? filteredActivities : filteredActivities.slice(0, 2);
+  const filteredActivities =
+    selectedTab === 'ALL' ? activities : activities.filter((a) => a.tab === selectedTab);
 
   const services = [
-    { id: '1', title: 'Administration', description: 'Find personnel details with contact info', icon: require('../assets/images/icons/administration.png'), color: '#2196F3', route: '/campus-services/AdministrationSection'},
-    { id: '2', title: 'Lost and Found', description: 'Report lost items and find your belongings', icon: require('../assets/images/icons/lost-and-found.png'), color: '#E84343', route: '/campus-services/LostAndFoundSection' },
-    { id: '3', title: 'FAQs', description: 'Quick help for everything', icon: require('../assets/images/icons/faq.png'), color: '#FFC107', route: '/campus-services/FAQSection' },
+    {
+      id: '1',
+      title: 'Administration',
+      description: 'Find personnel details with contact info',
+      icon: require('../assets/images/icons/administration.png'),
+      color: '#2196F3',
+      route: '/campus-services/AdministrationSection',
+    },
+    {
+      id: '2',
+      title: 'Lost and Found',
+      description: 'Report lost items and find your belongings',
+      icon: require('../assets/images/icons/lost-and-found.png'),
+      color: '#E84343',
+      route: '/campus-services/LostAndFoundSection',
+    },
+    {
+      id: '3',
+      title: 'FAQs',
+      description: 'Quick help for everything',
+      icon: require('../assets/images/icons/faq.png'),
+      color: '#FFC107',
+      route: '/campus-services/FAQSection',
+    },
   ];
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView style={styles.container}>
-        <View style={styles.searchContainer}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={styles.searchContainer}>
         <View style={styles.searchIconContainer}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Ionicons name="search" color={theme.text} size={20} />
         </View>
         <TextInput
           style={[
@@ -101,7 +122,7 @@ export const HomeContent: React.FC = () => {
               backgroundColor: theme.inputBackground,
               borderColor: theme.inputBorder,
               color: theme.text,
-            }
+            },
           ]}
           placeholder="Search"
           placeholderTextColor={theme.placeholder}
@@ -111,9 +132,7 @@ export const HomeContent: React.FC = () => {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Campus Utilities
-        </Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Campus Utilities</Text>
         {utilities.map((utility) => (
           <Pressable
             key={utility.id}
@@ -123,24 +142,16 @@ export const HomeContent: React.FC = () => {
                 backgroundColor: theme.inputBackground,
                 borderColor: theme.inputBorder,
                 opacity: pressed ? 0.7 : 1,
-              }
+              },
             ]}
-            onPress={() => {
-              if (utility.route) {
-                router.push(utility.route);
-              } else {
-                alert('Coming soon 🚧');
-              }
-            }}
+            onPress={() =>
+              utility.route ? router.push(utility.route) : alert('Coming soon 🚧')
+            }
           >
             <View style={[styles.utilityBorder, { backgroundColor: utility.color }]} />
-            <View>
-              <Image source={utility.icon} style={styles.utilityImage} resizeMode='contain'/>
-            </View>
+            <Image source={utility.icon} style={styles.utilityImage} resizeMode="contain" />
             <View style={styles.utilityContent}>
-              <Text style={[styles.utilityTitle, { color: utility.color }]}>
-                {utility.title}
-              </Text>
+              <Text style={[styles.utilityTitle, { color: utility.color }]}>{utility.title}</Text>
               <Text style={[styles.utilityDescription, { color: theme.placeholder }]}>
                 {utility.description}
               </Text>
@@ -149,18 +160,18 @@ export const HomeContent: React.FC = () => {
         ))}
       </View>
 
-    <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Upcoming Activity
-        </Text>
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Upcoming Activity</Text>
 
-        <View style={[
-          styles.tabContainer,
-          {
-            backgroundColor: theme.inputBackground,
-            borderColor: theme.inputBorder,
-          }
-        ]}>
+        <View
+          style={[
+            styles.tabContainer,
+            {
+              backgroundColor: theme.inputBackground,
+              borderColor: theme.inputBorder,
+            },
+          ]}
+        >
           {['SPORTS', 'CULT', 'TECH', 'ALL'].map((tab) => (
             <Pressable
               key={tab}
@@ -172,93 +183,89 @@ export const HomeContent: React.FC = () => {
                 },
                 { opacity: pressed ? 0.7 : 1 },
               ]}
-              onPress={() => {
-                setSelectedTab(tab as typeof selectedTab);
-                setShowAll(false); 
-              }}
+              onPress={() => setSelectedTab(tab as typeof selectedTab)}
             >
-            <Text
-              style={[
-                styles.tabText,
-                { color: selectedTab === tab ? tabColors[tab] : theme.placeholder },
-              ]}
-            >
-              {tab}
-            </Text>
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: selectedTab === tab ? tabColors[tab] : theme.placeholder },
+                ]}
+              >
+                {tab}
+              </Text>
             </Pressable>
           ))}
         </View>
 
-      <View
-        style={[
-          styles.activityContainer,
-          {
-          backgroundColor: theme.inputBackground,
-          borderColor: theme.inputBorder,
-          },
-        ]}
-      >
-      {visibleActivities.length === 0 ? (
-        <Text style={{ color: theme.placeholder, textAlign: 'center', padding: 16 }}>
-          No upcoming {selectedTab.toLowerCase()} events.
-        </Text>
-      ) : (
-        visibleActivities.map((activity, index) => (
-          <View key={activity.id}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.activityItem,
-                { opacity: pressed ? 0.7 : 1 },
-              ]}
+        <View
+          style={[
+            styles.activityContainer,
+            {
+              backgroundColor: theme.inputBackground,
+              borderColor: theme.inputBorder,
+            },
+          ]}
+        >
+          {filteredActivities.length === 0 ? (
+            <Text style={{ color: theme.placeholder, textAlign: 'center', padding: 16 }}>
+              No upcoming {selectedTab.toLowerCase()} events.
+            </Text>
+          ) : (
+            <ScrollView
+              nestedScrollEnabled={true}
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: 300 }}
             >
-              <View
-                style={[
-                  styles.dateBox,
-                  { backgroundColor: tabColors[selectedTab] || '#5C9FD6' },
-                ]}
-              >
-                <Text style={styles.dateNumber}>{activity.date}</Text>
-                <Text style={styles.dateMonth}>{activity.month}</Text>
-              </View>
+              {filteredActivities.map((item, index) => (
+                <View key={item.id}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.activityItem,
+                      { opacity: pressed ? 0.7 : 1 },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.dateBox,
+                        { backgroundColor: tabColors[item.tab] || '#5C9FD6' },
+                      ]}
+                    >
+                      <Text style={styles.dateNumber}>{item.date}</Text>
+                      <Text style={styles.dateMonth}>{item.month}</Text>
+                    </View>
 
-              <View style={styles.activityContent}>
-                <Text style={[styles.activityTitle, { color: theme.text }]}>
-                  {activity.title}
-                </Text>
-                <Text style={[styles.activityDescription, { color: theme.placeholder }]}>
-                  {activity.description}
-                </Text>
-              </View>
-            </Pressable>
+                    <View style={styles.activityContent}>
+                      <Text style={[styles.activityTitle, { color: theme.text }]}>
+                        {item.title}
+                      </Text>
+                      <Text style={[styles.activityDescription, { color: theme.placeholder }]}>
+                        {item.description}
+                      </Text>
+                    </View>
+                  </Pressable>
+                  {index < filteredActivities.length - 1 && (
+                    <View style={[styles.divider, { backgroundColor: theme.inputBorder }]} />
+                  )}
+                </View>
+              ))}
+            </ScrollView>
+          )}
+        </View>
 
-            {index < visibleActivities.length - 1 && (
-              <View style={[styles.divider, { backgroundColor: theme.inputBorder }]} />
-              )}
-              </View>
-        ))
-      )}
-    </View>
-
-    {filteredActivities.length > 2 && (
-      <Pressable
-        style={({ pressed }) => [
-          styles.viewMoreButton,
-          { opacity: pressed ? 0.7 : 1 },
-        ]}
-        onPress={() => setShowAll(!showAll)}
-      >
-        <Text style={styles.viewMoreText}>
-          {showAll ? 'View Less ∧' : 'View More ⌄'}
-        </Text>
-      </Pressable>
-    )}
-  </View>
-
+        <Pressable
+          style={({ pressed }) => [
+            styles.viewMoreButton,
+            { opacity: pressed ? 0.7 : 1 },
+            { backgroundColor: theme.inputBackground}
+          ]}
+          onPress={() => alert('Show all activities coming soon 🚧')}
+        >
+          <Text style={styles.viewMoreText}>View All</Text>
+        </Pressable>
+      </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          Campus Services
-        </Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Campus Services</Text>
         {services.map((service) => (
           <Pressable
             key={service.id}
@@ -268,24 +275,16 @@ export const HomeContent: React.FC = () => {
                 backgroundColor: theme.inputBackground,
                 borderColor: theme.inputBorder,
                 opacity: pressed ? 0.7 : 1,
-              }
+              },
             ]}
-            onPress={() => {
-              if (service.route) {
-                router.push(service.route);
-              } else {
-                alert('Coming soon 🚧');
-              }
-            }}
+            onPress={() =>
+              service.route ? router.push(service.route) : alert('Coming soon 🚧')
+            }
           >
             <View style={[styles.utilityBorder, { backgroundColor: service.color }]} />
-            <View>
-              <Image source={service.icon} style={styles.utilityImage} resizeMode='contain'/>
-            </View>
+            <Image source={service.icon} style={styles.utilityImage} resizeMode="contain" />
             <View style={styles.utilityContent}>
-              <Text style={[styles.utilityTitle, { color: service.color }]}>
-                {service.title}
-              </Text>
+              <Text style={[styles.utilityTitle, { color: service.color }]}>{service.title}</Text>
               <Text style={[styles.utilityDescription, { color: theme.placeholder }]}>
                 {service.description}
               </Text>
@@ -293,38 +292,25 @@ export const HomeContent: React.FC = () => {
           </Pressable>
         ))}
       </View>
-      </ScrollView>
-      </View>
+    </ScrollView>
   );
 };
 
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
+  container: { flex: 1 },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     marginBottom: 28,
-    marginTop: 20
+    marginTop: 20,
   },
   searchIconContainer: {
     position: 'absolute',
     left: 36,
     zIndex: 1,
   },
-  searchIcon: {
-    fontSize: 18
-  },
+  searchIcon: { fontSize: 18 },
   searchInput: {
     flex: 1,
     height: 48,
@@ -333,15 +319,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 0.7,
   },
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
+  section: { paddingHorizontal: 20, marginBottom: 24 },
+  sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 16 },
   utilityCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -351,30 +330,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     overflow: 'hidden',
   },
-  utilityBorder: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 10,
-  },
-  utilityImage:{
-    height: 56,
-    width: 56,
-    marginLeft: 8,
-    marginRight: 12,
-  },
-  utilityContent: {
-    flex: 1,
-  },
-  utilityTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  utilityDescription: {
-    fontSize: 12,
-  },
+  utilityBorder: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 10 },
+  utilityImage: { height: 56, width: 56, marginLeft: 8, marginRight: 12 },
+  utilityContent: { flex: 1 },
+  utilityTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
+  utilityDescription: { fontSize: 12 },
   tabContainer: {
     flexDirection: 'row',
     borderRadius: 12,
@@ -382,71 +342,32 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     overflow: 'hidden',
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#2196F3',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  activityContainer: {
-    borderRadius: 12,
-    borderWidth: 0.7,
-    overflow: 'hidden',
-  },
-  activityItem: {
-    flexDirection: 'row',
-    padding: 16,
-  },
+  tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  tabText: { fontSize: 14, fontWeight: '600' },
+  activityContainer: { borderRadius: 12, borderWidth: 0.7, overflow: 'hidden' },
+  activityItem: { flexDirection: 'row', padding: 16 },
   dateBox: {
     width: 50,
     height: 50,
-    backgroundColor: '#5C9FD6',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  dateNumber: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  dateMonth: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  activityDescription: {
-    fontSize: 12,
-  },
-  divider: {
-    height: 1,
-    marginLeft: 78,
-  },
+  dateNumber: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
+  dateMonth: { fontSize: 10, fontWeight: '600', color: '#fff' },
+  activityContent: { flex: 1 },
+  activityTitle: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
+  activityDescription: { fontSize: 12 },
+  divider: { height: 1, marginLeft: 78 },
   viewMoreButton: {
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
     marginTop: 8,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderColor: '#FF9800',
+    borderWidth: 2
   },
-  viewMoreText: {
-    color: '#2196F3',
-    fontSize: 14,
-    fontWeight: '600',
-  }
+  viewMoreText: { color: '#FF9800', fontSize: 16, fontWeight: '600' },
 });
-
