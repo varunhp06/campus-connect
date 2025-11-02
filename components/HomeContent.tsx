@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,9 @@ import {
   ScrollView,
   Pressable,
   Image,
-  Dimensions,
   ImageSourcePropType,
 } from 'react-native';
-import { router, Router } from 'expo-router';
+import { router } from 'expo-router';
 import { useTheme } from './ThemeContext';
 
 interface UtilityCard {

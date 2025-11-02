@@ -1,26 +1,8 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
 import { ThemedLayout } from '@/components/ThemedLayout';
 import { ServiceContent } from '@/components/ServiceContent';
-import { Ionicons } from '@expo/vector-icons';
 
-// Example custom icon component for sports
 export default function AdministrationSection() {
-  const handleRentEquipment = () => {
-    console.log('Navigate to Rent Equipment');
-    // Add your navigation logic here
-  };
-
-  const handleReturnEquipment = () => {
-    console.log('Navigate to Return Equipment');
-    // Add your navigation logic here
-  };
-
-  const handleComplaint = () => {
-    console.log('Navigate to Complaint Form');
-    // Add your navigation logic here
-  };
-
   const serviceButtons = [
     {
       id: 'academic',
@@ -58,7 +40,6 @@ export default function AdministrationSection() {
       route: ''
     },
     
-    
   ];
 
   return (
@@ -74,7 +55,7 @@ export default function AdministrationSection() {
         icon='business'
         title="Administration"
         buttons={serviceButtons}
-        bottomImage={require('@/assets/images/backgrounds/administration.png')} // Replace with your image path
+        bottomImage={require('@/assets/images/backgrounds/administration.png')} 
       />
     </ThemedLayout>
   );

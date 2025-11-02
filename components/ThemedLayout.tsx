@@ -1,6 +1,5 @@
 import React, { ReactNode } from 'react';
 import {
-  View,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,

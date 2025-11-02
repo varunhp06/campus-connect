@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  Image,
   ImageSourcePropType,
   FlatList,
 } from 'react-native';
 import { useTheme } from './ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import { ServiceLayout } from './ServiceLayout';
 
 interface ServiceButton {
   id: string;
@@ -92,66 +92,31 @@ export const ServiceContent: React.FC<ServiceContentProps> = ({
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.text }]}>
-          <Ionicons name={icon} color={theme.text} size={20} /> {title}
-        </Text>
-      </View>
-
-      <View style={{ flexGrow: 0, maxHeight: '65%' }}>
-        <FlatList
-          data={buttons}
-          renderItem={renderButton}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 0 }}
-          showsVerticalScrollIndicator={true}
-          initialNumToRender={5}
-          maxToRenderPerBatch={5}
-          windowSize={5}
-        />
-      </View>
-
-      {bottomImage && (
-        <View style={styles.bottomImageContainer}>
-          <Image
-            source={bottomImage}
-            style={[styles.bottomImage, bottomImageStyle]}
-            resizeMode="contain"
-          />
+    <ServiceLayout
+      icon={icon}
+      title={title}
+      bottomImage={bottomImage}
+      bottomImageStyle={bottomImageStyle}
+      showTitle={true}
+      showBottomImage={true}
+    >
+        <View style={{ flexGrow: 1, height: '80%', maxHeight: '80%' }}> 
+          <FlatList 
+          data={buttons} 
+          renderItem={renderButton} 
+          keyExtractor={(item) => item.id} 
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 0 }} 
+          showsVerticalScrollIndicator={true} 
+          initialNumToRender={5} 
+          maxToRenderPerBatch={5} 
+          windowSize={5} /> 
         </View>
-      )}
-    </View>
-  );
+    </ServiceLayout>
+);
+
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    marginTop: 35,
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  bottomImageContainer: {
-    position: 'absolute',
-    bottom: -25,
-    left: 0,
-    right: 0,
-    width: '100%',
-    height: 300,
-    zIndex: 2,
-    pointerEvents: 'none',
-  },
-  bottomImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-    position: 'absolute',
-  },
   utilityCard: {
     flexDirection: 'row',
     alignItems: 'center',
