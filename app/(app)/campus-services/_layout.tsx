@@ -27,13 +27,23 @@ export default function RootLayout() {
       }}
     >
       <Stack.Screen 
-        name="HomeScreen" 
+        name="AdministrationSection" 
         options={{
           headerShown: false,
         }}
       />
-      <Stack.Screen name="campus-utilities" options={{ headerShown: false }} />
-      <Stack.Screen name="campus-services" options={{ headerShown: false }} />
+      <Stack.Screen 
+        name="LostAndFoundSection" 
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="FAQSection" 
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

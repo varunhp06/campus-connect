@@ -5,7 +5,7 @@ import { ServiceContent } from '@/components/ServiceContent';
 import { Ionicons } from '@expo/vector-icons';
 
 // Example custom icon component for sports
-export default function NightDeliverySection() {
+export default function AdministrationSection() {
   const handleRentEquipment = () => {
     console.log('Navigate to Rent Equipment');
     // Add your navigation logic here
@@ -23,45 +23,42 @@ export default function NightDeliverySection() {
 
   const serviceButtons = [
     {
-      id: 'amul',
-      title: 'Amul Parlour',
-      description: 'Order food from Amul Parlour',
+      id: 'academic',
+      title: 'Academic Affairs',
+      description: 'Find all personnel related to academic affairs',
       color: '#2196F3',
-      route: '',
-      status: 'Online'
+      route: ''
     },
     {
-      id: 'vinayak',
-      title: 'Vinayak',
-      description: 'Order food from Vinayak',
+      id: 'student',
+      title: 'Student Affairs',
+      description: 'Connect with officials handling student affairs and support',
       color: '#2196F3',
-      route: '',
-      status: 'Offline'
+      route: ''
     },
     {
-      id: 'nescafe',
-      title: 'Nescafe',
-      description: 'Order food from Nescafe',
+      id: 'sports',
+      title: 'Sports Affairs',
+      description: 'Discover everyone managing campus sports',
       color: '#2196F3',
-      route: '',
-      status: 'Online'
+      route: ''
     },
     {
-      id: 'ccd',
-      title: 'Cafe Coffee Delight',
-      description: 'Order food from CCD',
+      id: 'medical',
+      title: 'Medical Affairs',
+      description: 'Locate staff responsible for campus health and medical care',
       color: '#2196F3',
-      route: '',
-      status: 'Online'
+      route: ''
     },
     {
-      id: 'kravers',
-      title: 'Kravers Kitchen',
-      description: 'Order food from Kravers Kitchen',
+      id: 'departments',
+      title: 'Departments',
+      description: 'Find all faculty in respective departments',
       color: '#2196F3',
-      route: '',
-      status: 'online'
+      route: ''
     },
+    
+    
   ];
 
   return (
@@ -74,10 +71,10 @@ export default function NightDeliverySection() {
       }}
     >
       <ServiceContent
-        icon='pizza'
-        title="Night Delivery"
+        icon='business'
+        title="Administration"
         buttons={serviceButtons}
-        bottomImage={require('@/assets/images/backgrounds/night-delivery.png')} // Replace with your image path
+        bottomImage={require('@/assets/images/backgrounds/administration.png')} // Replace with your image path
       />
     </ThemedLayout>
   );

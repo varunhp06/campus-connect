@@ -99,13 +99,18 @@ export const ServiceContent: React.FC<ServiceContentProps> = ({
         </Text>
       </View>
 
-      <FlatList
-        data={buttons}
-        renderItem={renderButton}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140 }}
-        showsVerticalScrollIndicator={false}
-      />
+      <View style={{ flexGrow: 0, maxHeight: '65%' }}>
+        <FlatList
+          data={buttons}
+          renderItem={renderButton}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 0 }}
+          showsVerticalScrollIndicator={true}
+          initialNumToRender={5}
+          maxToRenderPerBatch={5}
+          windowSize={5}
+        />
+      </View>
 
       {bottomImage && (
         <View style={styles.bottomImageContainer}>
@@ -133,15 +138,18 @@ const styles = StyleSheet.create({
   },
   bottomImageContainer: {
     position: 'absolute',
-    bottom: 0,
+    bottom: -25,
     left: 0,
+    right: 0,
     width: '100%',
-    height: '50%',
+    height: 300,
     zIndex: 2,
+    pointerEvents: 'none',
   },
   bottomImage: {
     width: '100%',
-    height: '130%',
+    height: '100%',
+    resizeMode: 'cover',
     position: 'absolute',
   },
   utilityCard: {

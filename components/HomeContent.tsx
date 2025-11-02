@@ -83,9 +83,9 @@ export const HomeContent: React.FC = () => {
   const visibleActivities = showAll ? filteredActivities : filteredActivities.slice(0, 2);
 
   const services = [
-    { id: '1', title: 'Administration', description: 'Find personnel details with contact info', icon: require('../assets/images/icons/administration.png'), color: '#2196F3' },
-    { id: '2', title: 'Lost and Found', description: 'Report lost items and find your belongings', icon: require('../assets/images/icons/lost-and-found.png'), color: '#E84343' },
-    { id: '3', title: 'FAQs', description: 'Quick help for everything', icon: require('../assets/images/icons/faq.png'), color: '#FFC107' },
+    { id: '1', title: 'Administration', description: 'Find personnel details with contact info', icon: require('../assets/images/icons/administration.png'), color: '#2196F3', route: '/campus-services/AdministrationSection'},
+    { id: '2', title: 'Lost and Found', description: 'Report lost items and find your belongings', icon: require('../assets/images/icons/lost-and-found.png'), color: '#E84343', route: '/campus-services/LostAndFoundSection' },
+    { id: '3', title: 'FAQs', description: 'Quick help for everything', icon: require('../assets/images/icons/faq.png'), color: '#FFC107', route: '/campus-services/FAQSection' },
   ];
 
   return (
@@ -271,6 +271,13 @@ export const HomeContent: React.FC = () => {
                 opacity: pressed ? 0.7 : 1,
               }
             ]}
+            onPress={() => {
+              if (service.route) {
+                router.push(service.route);
+              } else {
+                alert('Coming soon 🚧');
+              }
+            }}
           >
             <View style={[styles.utilityBorder, { backgroundColor: service.color }]} />
             <View>
