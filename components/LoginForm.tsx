@@ -5,7 +5,6 @@ import {
   TextInput,
   StyleSheet,
   Alert,
-  Pressable,
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
@@ -14,6 +13,7 @@ import { router } from 'expo-router';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 import { Ionicons } from '@expo/vector-icons'; 
+import HapticPressable from './HapticPressable';
 
 export const LoginForm: React.FC = () => {
   const { theme } = useTheme();
@@ -159,16 +159,16 @@ export const LoginForm: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        <Pressable
+        <HapticPressable
           style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
           onPress={handleForgotPassword}
           disabled={isLoading}
         >
           <Text style={styles.forgotText}>Forgot Password?</Text>
-        </Pressable>
+        </HapticPressable>
       </View>
 
-      <Pressable
+      <HapticPressable
         style={({ pressed }) => [
           styles.button,
           isLoading && styles.buttonDisabled,
@@ -182,7 +182,7 @@ export const LoginForm: React.FC = () => {
         ) : (
           <Text style={styles.buttonText}>SIGN IN</Text>
         )}
-      </Pressable>
+      </HapticPressable>
     </View>
   );
 };

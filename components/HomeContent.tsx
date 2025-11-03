@@ -5,13 +5,13 @@ import {
   TextInput,
   StyleSheet,
   ScrollView,
-  Pressable,
   Image,
   ImageSourcePropType,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTheme } from './ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import HapticPressable  from './HapticPressable'
 
 interface UtilityCard {
   id: string;
@@ -75,7 +75,7 @@ export const HomeContent: React.FC = () => {
     { id: '2', date: '30', tab: 'SPORTS', month: 'SEP', title: 'College Marathon Run', description: 'A 5K/10K run event for all students and faculty' },
     { id: '3', date: '10', tab: 'SPORTS', month: 'OCT', title: 'Indoor Sports Festival', description: 'Badminton, Table Tennis, Chess, and Carrom competitions' },
     { id: '5', date: '12', tab: 'CULT', month: 'OCT', title: 'Inter-College Cult Cup', description: 'Watch top city colleges for a knockout-style tournament' },
-    { id: '6', date: '13', tab: 'TECH', month: 'OCT', title: 'Inter-College Tech Cup', description: 'Tech events and hackathons' },
+   // { id: '6', date: '13', tab: 'TECH', month: 'OCT', title: 'Inter-College Tech Cup', description: 'Tech events and hackathons' },
     { id: '7', date: '14', tab: 'CULT', month: 'OCT', title: 'Inter-College Dance Cup', description: 'City colleges compete in dance battles' },
   ];
 
@@ -134,7 +134,7 @@ export const HomeContent: React.FC = () => {
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Campus Utilities</Text>
         {utilities.map((utility) => (
-          <Pressable
+          <HapticPressable
             key={utility.id}
             style={({ pressed }) => [
               styles.utilityCard,
@@ -156,7 +156,7 @@ export const HomeContent: React.FC = () => {
                 {utility.description}
               </Text>
             </View>
-          </Pressable>
+          </HapticPressable>
         ))}
       </View>
 
@@ -173,7 +173,7 @@ export const HomeContent: React.FC = () => {
           ]}
         >
           {['SPORTS', 'CULT', 'TECH', 'ALL'].map((tab) => (
-            <Pressable
+            <HapticPressable
               key={tab}
               style={({ pressed }) => [
                 styles.tab,
@@ -193,7 +193,7 @@ export const HomeContent: React.FC = () => {
               >
                 {tab}
               </Text>
-            </Pressable>
+            </HapticPressable>
           ))}
         </View>
 
@@ -207,18 +207,30 @@ export const HomeContent: React.FC = () => {
           ]}
         >
           {filteredActivities.length === 0 ? (
-            <Text style={{ color: theme.placeholder, textAlign: 'center', padding: 16 }}>
-              No upcoming {selectedTab.toLowerCase()} events.
-            </Text>
+            <ScrollView
+              nestedScrollEnabled={true}
+              showsVerticalScrollIndicator={false}
+              style={{ minHeight: 300, maxHeight: 300 }}
+              contentContainerStyle={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: theme.placeholder, textAlign: 'center' }}>
+                No upcoming {selectedTab.toLowerCase()} events.
+              </Text>
+            </ScrollView>
+
           ) : (
             <ScrollView
               nestedScrollEnabled={true}
               showsVerticalScrollIndicator={false}
-              style={{ maxHeight: 300 }}
+              style={{ minHeight: 300, maxHeight: 300 }}
             >
               {filteredActivities.map((item, index) => (
                 <View key={item.id}>
-                  <Pressable
+                  <HapticPressable
                     style={({ pressed }) => [
                       styles.activityItem,
                       { opacity: pressed ? 0.7 : 1 },
@@ -242,7 +254,7 @@ export const HomeContent: React.FC = () => {
                         {item.description}
                       </Text>
                     </View>
-                  </Pressable>
+                  </HapticPressable>
                   {index < filteredActivities.length - 1 && (
                     <View style={[styles.divider, { backgroundColor: theme.inputBorder }]} />
                   )}
@@ -252,7 +264,7 @@ export const HomeContent: React.FC = () => {
           )}
         </View>
 
-        <Pressable
+        <HapticPressable
           style={({ pressed }) => [
             styles.viewMoreButton,
             { opacity: pressed ? 0.7 : 1 },
@@ -261,13 +273,13 @@ export const HomeContent: React.FC = () => {
           onPress={() => alert('Show all activities coming soon 🚧')}
         >
           <Text style={styles.viewMoreText}>View All</Text>
-        </Pressable>
+        </HapticPressable>
       </View>
 
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Campus Services</Text>
         {services.map((service) => (
-          <Pressable
+          <HapticPressable
             key={service.id}
             style={({ pressed }) => [
               styles.utilityCard,
@@ -289,7 +301,7 @@ export const HomeContent: React.FC = () => {
                 {service.description}
               </Text>
             </View>
-          </Pressable>
+          </HapticPressable>
         ))}
       </View>
     </ScrollView>

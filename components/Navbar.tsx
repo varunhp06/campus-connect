@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   Platform,
-  Pressable,
 } from 'react-native';
 import { useTheme } from './ThemeContext';
 import { useDrawer } from './DrawerContext';
+import HapticPressable from './HapticPressable';
 
 export interface NavbarConfig {
   showHamburger?: boolean;
@@ -45,7 +45,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     ]}>
       <View style={styles.leftSection}>
         {showHamburger && (
-          <Pressable
+          <HapticPressable
             style={({ pressed }) => [
               { opacity: pressed ? 0.5 : 1 }
             ]}
@@ -57,7 +57,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <View style={[styles.hamburgerLine2, { backgroundColor: theme.text }]} />
               <View style={[styles.hamburgerLine3, { backgroundColor: theme.text }]} />
             </View>
-          </Pressable>
+          </HapticPressable>
         )}
 
         {showTitle && (
@@ -71,14 +71,14 @@ export const Navbar: React.FC<NavbarProps> = ({
       </View>
 
       {showThemeToggle && (
-        <Pressable
+        <HapticPressable
           style={({ pressed }) => [
             { opacity: pressed ? 0.5 : 1 }
           ]}
           onPress={toggleTheme}
         >
           <Text style={styles.themeIcon}>{isDarkMode ? '☀️' : '🌙'}</Text>
-        </Pressable>
+        </HapticPressable>
       )}
     </View>
   );

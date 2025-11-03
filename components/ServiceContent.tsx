@@ -3,13 +3,13 @@ import {
   View,
   Text,
   StyleSheet,
-  Pressable,
   ImageSourcePropType,
   FlatList,
 } from 'react-native';
 import { useTheme } from './ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { ServiceLayout } from './ServiceLayout';
+import HapticPressable from './HapticPressable';
 
 interface ServiceButton {
   id: string;
@@ -40,13 +40,13 @@ export const ServiceContent: React.FC<ServiceContentProps> = ({
   const renderButton = ({ item }: { item: ServiceButton }) => {
     const isOffline = item.status?.toLowerCase() === 'offline';
     const isOnline = item.status?.toLowerCase() === 'online';
-    const isPressable = !isOffline; 
+    const isHapticPressable = !isOffline; 
 
     return (
-      <Pressable
-        disabled={!isPressable}
+      <HapticPressable
+        disabled={!isHapticPressable}
         onPress={() => {
-          if (isPressable) console.log('Navigate to', item.route);
+          if (isHapticPressable) console.log('Navigate to', item.route);
         }}
         style={({ pressed }) => [
           styles.utilityCard,
@@ -87,7 +87,7 @@ export const ServiceContent: React.FC<ServiceContentProps> = ({
             {item.description}
           </Text>
         </View>
-      </Pressable>
+      </HapticPressable>
     );
   };
 
