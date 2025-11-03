@@ -35,7 +35,6 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
   const userName = user?.displayName || 'User';
   const userEmail = user?.email || 'No email';
 
-  // Animate open/close
   useEffect(() => {
     if (isOpen) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -71,7 +70,6 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
-  // Swipe gesture for closing
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -157,7 +155,6 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
 
   return (
     <>
-      {/* Overlay */}
       <Animated.View
         pointerEvents={isOpen ? 'auto' : 'none'}
         style={[
@@ -176,7 +173,6 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
         />
       </Animated.View>
 
-      {/* Drawer */}
       <Animated.View
         pointerEvents={isOpen ? 'auto' : 'none'}
         {...panResponder.panHandlers}

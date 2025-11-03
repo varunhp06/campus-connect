@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { PanResponder, Dimensions } from 'react-native';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { PanResponder } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { usePathname } from 'expo-router'; 
 
 const SWIPE_THRESHOLD = 35;
 
@@ -27,6 +29,8 @@ interface DrawerProviderProps {
 
 export const DrawerProvider: React.FC<DrawerProviderProps> = ({ children }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const navigation = useNavigation();
+  const pathname = usePathname?.();
 
   const openDrawer = () => setIsDrawerOpen(true);
   const closeDrawer = () => setIsDrawerOpen(false);
@@ -45,6 +49,20 @@ export const DrawerProvider: React.FC<DrawerProviderProps> = ({ children }) => {
       },
     });
   };
+
+  useEffect(() => {
+    if (pathname === undefined) return; 
+    setIsDrawerOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!navigation || typeof navigation.addListener !== 'function') return;
+    const unsubscribe = navigation.addListener('state', () => {
+      setIsDrawerOpen(false);
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   return (
     <DrawerContext.Provider
