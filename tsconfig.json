@@ -6,10 +6,13 @@
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "types": ["expo-file-system"],
   },
   "include": [
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    "src", 
+    "src/types"
   ]
 }

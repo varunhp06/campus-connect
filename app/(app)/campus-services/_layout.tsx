@@ -44,6 +44,12 @@ export default function RootLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen 
+        name="events" 
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

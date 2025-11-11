@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,8 @@ import {
 import { router } from 'expo-router';
 import { useTheme } from './ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import HapticPressable  from './HapticPressable'
+import HapticPressable from './HapticPressable';
+import { activities } from './data/activities';
 
 interface UtilityCard {
   id: string;
@@ -27,6 +28,7 @@ interface ActivityItem {
   date: string;
   tab: string;
   month: string;
+  year: number;
   title: string;
   description: string;
 }
@@ -70,17 +72,30 @@ export const HomeContent: React.FC = () => {
     ALL: '#FF9800',
   };
 
-  const activities: ActivityItem[] = [
-    { id: '1', date: '25', tab: 'SPORTS', month: 'SEP', title: 'Annual Sports Meet', description: 'Inter-department athletics, track & field, and team games' },
-    { id: '2', date: '30', tab: 'SPORTS', month: 'SEP', title: 'College Marathon Run', description: 'A 5K/10K run event for all students and faculty' },
-    { id: '3', date: '10', tab: 'SPORTS', month: 'OCT', title: 'Indoor Sports Festival', description: 'Badminton, Table Tennis, Chess, and Carrom competitions' },
-    { id: '5', date: '12', tab: 'CULT', month: 'OCT', title: 'Inter-College Cult Cup', description: 'Watch top city colleges for a knockout-style tournament' },
-   // { id: '6', date: '13', tab: 'TECH', month: 'OCT', title: 'Inter-College Tech Cup', description: 'Tech events and hackathons' },
-    { id: '7', date: '14', tab: 'CULT', month: 'OCT', title: 'Inter-College Dance Cup', description: 'City colleges compete in dance battles' },
-  ];
+  // Helper function to check if an event has passed
+  const isEventPassed = (eventDate: string, eventMonth: string, eventYear: number): boolean => {
+    const monthMap: Record<string, number> = {
+      JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
+      JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11,
+    };
+    
+    const eventDateObj = new Date(eventYear, monthMap[eventMonth], parseInt(eventDate));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return eventDateObj < today;
+  };
 
-  const filteredActivities =
-    selectedTab === 'ALL' ? activities : activities.filter((a) => a.tab === selectedTab);
+  // Filter out past events
+  const upcomingActivities = useMemo(() => {
+    return activities.filter(activity => !isEventPassed(activity.date, activity.month, activity.year));
+  }, [activities]);
+
+  const filteredActivities = useMemo(() => {
+    return selectedTab === 'ALL' 
+      ? upcomingActivities 
+      : upcomingActivities.filter((a) => a.tab === selectedTab);
+  }, [selectedTab, upcomingActivities]);
 
   const services = [
     {
@@ -221,7 +236,6 @@ export const HomeContent: React.FC = () => {
                 No upcoming {selectedTab.toLowerCase()} events.
               </Text>
             </ScrollView>
-
           ) : (
             <ScrollView
               nestedScrollEnabled={true}
@@ -268,9 +282,9 @@ export const HomeContent: React.FC = () => {
           style={({ pressed }) => [
             styles.viewMoreButton,
             { opacity: pressed ? 0.7 : 1 },
-            { backgroundColor: theme.inputBackground}
+            { backgroundColor: theme.inputBackground }
           ]}
-          onPress={() => alert('Show all activities coming soon 🚧')}
+          onPress={() => router.push('/events/AllEventsScreen')}
         >
           <Text style={styles.viewMoreText}>View All</Text>
         </HapticPressable>
@@ -359,8 +373,8 @@ const styles = StyleSheet.create({
   activityContainer: { borderRadius: 12, borderWidth: 0.7, overflow: 'hidden' },
   activityItem: { flexDirection: 'row', padding: 16 },
   dateBox: {
-    width: 50,
-    height: 50,
+    width: 60,
+    height: 60,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
