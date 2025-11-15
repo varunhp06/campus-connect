@@ -9,7 +9,7 @@ export default function SportsSection() {
       title: 'Rent Equipment',
       description: 'Rent gear, fast and easy.',
       color: '#4CAF50',
-      route: ''
+      route: '/(app)/campus-utilities/Sports/Rent'
     },
     {
       id: 'return',

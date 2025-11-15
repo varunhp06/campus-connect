@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,15 @@ import {
   ScrollView,
   Image,
   ImageSourcePropType,
-} from 'react-native';
-import { router } from 'expo-router';
-import { useTheme } from './ThemeContext';
-import { Ionicons } from '@expo/vector-icons';
-import HapticPressable from './HapticPressable';
-import { activities } from './data/activities';
+  Animated,
+  Dimensions,
+} from "react-native";
+import { router } from "expo-router";
+import { useTheme } from "./ThemeContext";
+import { Ionicons } from "@expo/vector-icons";
+import HapticPressable from "./HapticPressable";
+import { activities } from "./data/activities";
+import ButtonComp from "./ButtonComp";
 
 interface UtilityCard {
   id: string;
@@ -35,97 +38,136 @@ interface ActivityItem {
 
 export const HomeContent: React.FC = () => {
   const { theme } = useTheme();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTab, setSelectedTab] = useState<'SPORTS' | 'CULT' | 'TECH' | 'ALL'>('SPORTS');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTab, setSelectedTab] = useState<
+    "SPORTS" | "CULT" | "TECH" | "ALL"
+  >("SPORTS");
+
+  const translateX = useRef(new Animated.Value(0)).current;
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  const TAB_WIDTH = containerWidth / 4;
+
+  const handlePress = (index: number, tab: string) => {
+    setSelectedTab(tab as typeof selectedTab);
+    Animated.spring(translateX, {
+      toValue: index,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const utilities: UtilityCard[] = [
     {
-      id: '1',
-      title: 'Night Delivery',
-      description: 'Late-night food orders delivered to your hostel after mess hours',
-      icon: require('../assets/images/icons/night-delivery.png'),
-      color: '#2196F3',
-      route: '/campus-utilities/NightDeliverySection',
+      id: "1",
+      title: "Night Delivery",
+      description:
+        "Late-night food orders delivered to your hostel after mess hours",
+      icon: require("../assets/images/icons/night-delivery.png"),
+      color: "#2196F3",
+      route: "/campus-utilities/NightDeliverySection",
     },
     {
-      id: '2',
-      title: 'Sports Section',
-      description: 'Sports hub for complaints, equipment requests, and event updates.',
-      icon: require('../assets/images/icons/sports.png'),
-      color: '#4CAF50',
-      route: '/campus-utilities/SportsSection',
+      id: "2",
+      title: "Sports Section",
+      description:
+        "Sports hub for complaints, equipment requests, and event updates.",
+      icon: require("../assets/images/icons/sports.png"),
+      color: "#4CAF50",
+      route: "/campus-utilities/Sports",
     },
     {
-      id: '3',
-      title: 'Cycle Rental',
-      description: 'Enjoy casual rides around campus',
-      icon: require('../assets/images/icons/cycle-rental.png'),
-      color: '#FFC107',
-      route: '/campus-utilities/CycleSection',
+      id: "3",
+      title: "Cycle Rental",
+      description: "Enjoy casual rides around campus",
+      icon: require("../assets/images/icons/cycle-rental.png"),
+      color: "#FFC107",
+      route: "/campus-utilities/CycleSection",
     },
   ];
 
   const tabColors: Record<string, string> = {
-    SPORTS: '#4CAF50',
-    CULT: '#E91E63',
-    TECH: '#2196F3',
-    ALL: '#FF9800',
+    SPORTS: "#4CAF50",
+    CULT: "#E91E63",
+    TECH: "#2196F3",
+    ALL: "#FF9800",
   };
 
   // Helper function to check if an event has passed
-  const isEventPassed = (eventDate: string, eventMonth: string, eventYear: number): boolean => {
+  const isEventPassed = (
+    eventDate: string,
+    eventMonth: string,
+    eventYear: number
+  ): boolean => {
     const monthMap: Record<string, number> = {
-      JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
-      JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11,
+      JAN: 0,
+      FEB: 1,
+      MAR: 2,
+      APR: 3,
+      MAY: 4,
+      JUN: 5,
+      JUL: 6,
+      AUG: 7,
+      SEP: 8,
+      OCT: 9,
+      NOV: 10,
+      DEC: 11,
     };
-    
-    const eventDateObj = new Date(eventYear, monthMap[eventMonth], parseInt(eventDate));
+
+    const eventDateObj = new Date(
+      eventYear,
+      monthMap[eventMonth],
+      parseInt(eventDate)
+    );
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     return eventDateObj < today;
   };
 
   // Filter out past events
   const upcomingActivities = useMemo(() => {
-    return activities.filter(activity => !isEventPassed(activity.date, activity.month, activity.year));
+    return activities.filter(
+      (activity) => !isEventPassed(activity.date, activity.month, activity.year)
+    );
   }, [activities]);
 
   const filteredActivities = useMemo(() => {
-    return selectedTab === 'ALL' 
-      ? upcomingActivities 
+    return selectedTab === "ALL"
+      ? upcomingActivities
       : upcomingActivities.filter((a) => a.tab === selectedTab);
   }, [selectedTab, upcomingActivities]);
 
   const services = [
     {
-      id: '1',
-      title: 'Administration',
-      description: 'Find personnel details with contact info',
-      icon: require('../assets/images/icons/administration.png'),
-      color: '#2196F3',
-      route: '/campus-services/AdministrationSection',
+      id: "1",
+      title: "Administration",
+      description: "Find personnel details with contact info",
+      icon: require("../assets/images/icons/administration.png"),
+      color: "#2196F3",
+      route: "/campus-services/AdministrationSection",
     },
     {
-      id: '2',
-      title: 'Lost and Found',
-      description: 'Report lost items and find your belongings',
-      icon: require('../assets/images/icons/lost-and-found.png'),
-      color: '#E84343',
-      route: '/campus-services/LostAndFoundSection',
+      id: "2",
+      title: "Lost and Found",
+      description: "Report lost items and find your belongings",
+      icon: require("../assets/images/icons/lost-and-found.png"),
+      color: "#E84343",
+      route: "/campus-services/LostAndFoundSection",
     },
     {
-      id: '3',
-      title: 'FAQs',
-      description: 'Quick help for everything',
-      icon: require('../assets/images/icons/faq.png'),
-      color: '#FFC107',
-      route: '/campus-services/FAQSection',
+      id: "3",
+      title: "FAQs",
+      description: "Quick help for everything",
+      icon: require("../assets/images/icons/faq.png"),
+      color: "#FFC107",
+      route: "/campus-services/FAQSection",
     },
   ];
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
       <View style={styles.searchContainer}>
         <View style={styles.searchIconContainer}>
           <Ionicons name="search" color={theme.text} size={20} />
@@ -147,36 +189,23 @@ export const HomeContent: React.FC = () => {
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Campus Utilities</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          Campus Utilities
+        </Text>
         {utilities.map((utility) => (
-          <HapticPressable
+          <ButtonComp
+            utility={utility}
+            theme={theme}
+            router={router}
             key={utility.id}
-            style={({ pressed }) => [
-              styles.utilityCard,
-              {
-                backgroundColor: theme.inputBackground,
-                borderColor: theme.inputBorder,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-            onPress={() =>
-              utility.route ? router.push(utility.route) : alert('Coming soon 🚧')
-            }
-          >
-            <View style={[styles.utilityBorder, { backgroundColor: utility.color }]} />
-            <Image source={utility.icon} style={styles.utilityImage} resizeMode="contain" />
-            <View style={styles.utilityContent}>
-              <Text style={[styles.utilityTitle, { color: utility.color }]}>{utility.title}</Text>
-              <Text style={[styles.utilityDescription, { color: theme.placeholder }]}>
-                {utility.description}
-              </Text>
-            </View>
-          </HapticPressable>
+          />
         ))}
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Upcoming Activity</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          Upcoming Activity
+        </Text>
 
         <View
           style={[
@@ -187,29 +216,60 @@ export const HomeContent: React.FC = () => {
             },
           ]}
         >
-          {['SPORTS', 'CULT', 'TECH', 'ALL'].map((tab) => (
-            <HapticPressable
-              key={tab}
-              style={({ pressed }) => [
-                styles.tab,
-                selectedTab === tab && {
-                  borderBottomWidth: 2,
-                  borderBottomColor: tabColors[tab],
-                },
-                { opacity: pressed ? 0.7 : 1 },
-              ]}
-              onPress={() => setSelectedTab(tab as typeof selectedTab)}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  { color: selectedTab === tab ? tabColors[tab] : theme.placeholder },
-                ]}
-              >
-                {tab}
-              </Text>
-            </HapticPressable>
-          ))}
+          <View
+            style={{
+              position: "relative",
+              width: "100%", // 🔥 ensures proper tab width
+            }}
+            onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+          >
+            <View style={{ flexDirection: "row", width: "100%" }}>
+              {["SPORTS", "CULT", "TECH", "ALL"].map((tab, index) => (
+                <HapticPressable
+                  key={tab}
+                  style={({ pressed }) => [
+                    styles.tab,
+                    { opacity: pressed ? 0.7 : 1 },
+                    { width: TAB_WIDTH }, // 🔥 ensures equal tab width
+                  ]}
+                  onPress={() => handlePress(index, tab)}
+                >
+                  <Text
+                    style={[
+                      styles.tabText,
+                      {
+                        color:
+                          selectedTab === tab
+                            ? tabColors[tab]
+                            : theme.placeholder,
+                      },
+                    ]}
+                  >
+                    {tab}
+                  </Text>
+                </HapticPressable>
+              ))}
+            </View>
+
+            {/* Sliding Indicator */}
+            <Animated.View
+              style={{
+                position: "absolute",
+                bottom: 0,
+                height: 2,
+                width: TAB_WIDTH,
+                backgroundColor: tabColors[selectedTab],
+                transform: [
+                  {
+                    translateX: translateX.interpolate({
+                      inputRange: [0, 1, 2, 3],
+                      outputRange: [0, TAB_WIDTH, TAB_WIDTH * 2, TAB_WIDTH * 3],
+                    }),
+                  },
+                ],
+              }}
+            />
+          </View>
         </View>
 
         <View
@@ -228,11 +288,11 @@ export const HomeContent: React.FC = () => {
               style={{ minHeight: 300, maxHeight: 300 }}
               contentContainerStyle={{
                 flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center',
+                justifyContent: "center",
+                alignItems: "center",
               }}
             >
-              <Text style={{ color: theme.placeholder, textAlign: 'center' }}>
+              <Text style={{ color: theme.placeholder, textAlign: "center" }}>
                 No upcoming {selectedTab.toLowerCase()} events.
               </Text>
             </ScrollView>
@@ -253,7 +313,7 @@ export const HomeContent: React.FC = () => {
                     <View
                       style={[
                         styles.dateBox,
-                        { backgroundColor: tabColors[item.tab] || '#5C9FD6' },
+                        { backgroundColor: tabColors[item.tab] || "#5C9FD6" },
                       ]}
                     >
                       <Text style={styles.dateNumber}>{item.date}</Text>
@@ -261,16 +321,28 @@ export const HomeContent: React.FC = () => {
                     </View>
 
                     <View style={styles.activityContent}>
-                      <Text style={[styles.activityTitle, { color: theme.text }]}>
+                      <Text
+                        style={[styles.activityTitle, { color: theme.text }]}
+                      >
                         {item.title}
                       </Text>
-                      <Text style={[styles.activityDescription, { color: theme.placeholder }]}>
+                      <Text
+                        style={[
+                          styles.activityDescription,
+                          { color: theme.placeholder },
+                        ]}
+                      >
                         {item.description}
                       </Text>
                     </View>
                   </HapticPressable>
                   {index < filteredActivities.length - 1 && (
-                    <View style={[styles.divider, { backgroundColor: theme.inputBorder }]} />
+                    <View
+                      style={[
+                        styles.divider,
+                        { backgroundColor: theme.inputBorder },
+                      ]}
+                    />
                   )}
                 </View>
               ))}
@@ -282,40 +354,25 @@ export const HomeContent: React.FC = () => {
           style={({ pressed }) => [
             styles.viewMoreButton,
             { opacity: pressed ? 0.7 : 1 },
-            { backgroundColor: theme.inputBackground }
+            { backgroundColor: theme.inputBackground },
           ]}
-          onPress={() => router.push('/events/AllEventsScreen')}
+          onPress={() => router.push("/events/AllEventsScreen")}
         >
           <Text style={styles.viewMoreText}>View All</Text>
         </HapticPressable>
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Campus Services</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          Campus Services
+        </Text>
         {services.map((service) => (
-          <HapticPressable
+          <ButtonComp
+            utility={service}
+            theme={theme}
+            router={router}
             key={service.id}
-            style={({ pressed }) => [
-              styles.utilityCard,
-              {
-                backgroundColor: theme.inputBackground,
-                borderColor: theme.inputBorder,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-            onPress={() =>
-              service.route ? router.push(service.route) : alert('Coming soon 🚧')
-            }
-          >
-            <View style={[styles.utilityBorder, { backgroundColor: service.color }]} />
-            <Image source={service.icon} style={styles.utilityImage} resizeMode="contain" />
-            <View style={styles.utilityContent}>
-              <Text style={[styles.utilityTitle, { color: service.color }]}>{service.title}</Text>
-              <Text style={[styles.utilityDescription, { color: theme.placeholder }]}>
-                {service.description}
-              </Text>
-            </View>
-          </HapticPressable>
+          />
         ))}
       </View>
     </ScrollView>
@@ -325,14 +382,14 @@ export const HomeContent: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 20,
     marginBottom: 28,
     marginTop: 20,
   },
   searchIconContainer: {
-    position: 'absolute',
+    position: "absolute",
     left: 36,
     zIndex: 1,
   },
@@ -346,54 +403,60 @@ const styles = StyleSheet.create({
     borderWidth: 0.7,
   },
   section: { paddingHorizontal: 20, marginBottom: 24 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 16 },
+  sectionTitle: { fontSize: 18, fontWeight: "600", marginBottom: 16 },
   utilityCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: 12,
     borderWidth: 0.7,
     padding: 16,
     marginBottom: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
-  utilityBorder: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 10 },
+  utilityBorder: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 10,
+  },
   utilityImage: { height: 56, width: 56, marginLeft: 8, marginRight: 12 },
   utilityContent: { flex: 1 },
-  utilityTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
+  utilityTitle: { fontSize: 16, fontWeight: "600", marginBottom: 4 },
   utilityDescription: { fontSize: 12 },
   tabContainer: {
-    flexDirection: 'row',
-    borderRadius: 12,
+    flexDirection: "row",
+    borderRadius: 10,
     borderWidth: 0.7,
     marginBottom: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
-  tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
-  tabText: { fontSize: 14, fontWeight: '600' },
-  activityContainer: { borderRadius: 12, borderWidth: 0.7, overflow: 'hidden' },
-  activityItem: { flexDirection: 'row', padding: 16 },
+  tab: { flex: 1, paddingVertical: 12, alignItems: "center" },
+  tabText: { fontSize: 14, fontWeight: "600" },
+  activityContainer: { borderRadius: 12, borderWidth: 0.7, overflow: "hidden" },
+  activityItem: { flexDirection: "row", padding: 16 },
   dateBox: {
     width: 60,
     height: 60,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
-  dateNumber: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-  dateMonth: { fontSize: 10, fontWeight: '600', color: '#fff' },
+  dateNumber: { fontSize: 18, fontWeight: "bold", color: "#fff" },
+  dateMonth: { fontSize: 10, fontWeight: "600", color: "#fff" },
   activityContent: { flex: 1 },
-  activityTitle: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
+  activityTitle: { fontSize: 14, fontWeight: "600", marginBottom: 4 },
   activityDescription: { fontSize: 12 },
   divider: { height: 1, marginLeft: 78 },
   viewMoreButton: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 16,
     marginTop: 8,
     borderRadius: 8,
-    backgroundColor: '#fff',
-    borderColor: '#FF9800',
-    borderWidth: 2
+    backgroundColor: "#fff",
+    borderColor: "#FF9800",
+    borderWidth: 2,
   },
-  viewMoreText: { color: '#FF9800', fontSize: 16, fontWeight: '600' },
+  viewMoreText: { color: "#FF9800", fontSize: 16, fontWeight: "600" },
 });

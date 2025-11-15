@@ -8,6 +8,8 @@ const LoginScreen: React.FC = () => {
     Alert.alert('Menu', 'Navigation menu opened');
   };
 
+  
+
   return (
     <ThemedLayout
       showNavbar={true}
