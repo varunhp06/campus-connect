@@ -26,27 +26,6 @@ export const LoginForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const THIRTY_MINUTES = 30 * 60 * 1000;
-
-
-  //just for production purpose
-  useEffect(() => {
-    const checkLastLogin = async () => {
-      const savedTime = await AsyncStorage.getItem("lastLoginTime");
-
-      if (savedTime) {
-        const timeDiff = Date.now() - Number(savedTime);
-
-        if (timeDiff < THIRTY_MINUTES) {
-          Alert.alert("Welcome back!", "Auto-login successful.");
-          router.replace("/(app)/HomeScreen");
-        }
-      }
-    };
-
-    checkLastLogin();
-  }, []);
-
   const validateInputs = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.trim() || !password.trim()) {

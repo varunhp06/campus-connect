@@ -92,7 +92,6 @@ export const HomeContent: React.FC = () => {
     ALL: "#FF9800",
   };
 
-  // Helper function to check if an event has passed
   const isEventPassed = (
     eventDate: string,
     eventMonth: string,
@@ -124,7 +123,6 @@ export const HomeContent: React.FC = () => {
     return eventDateObj < today;
   };
 
-  // Filter out past events
   const upcomingActivities = useMemo(() => {
     return activities.filter(
       (activity) => !isEventPassed(activity.date, activity.month, activity.year)
@@ -160,7 +158,7 @@ export const HomeContent: React.FC = () => {
       description: "Quick help for everything",
       icon: require("../assets/images/icons/faq.png"),
       color: "#FFC107",
-      route: "/campus-services/FAQSection",
+      route: "/campus-services/faq",
     },
   ];
 
@@ -219,7 +217,7 @@ export const HomeContent: React.FC = () => {
           <View
             style={{
               position: "relative",
-              width: "100%", // 🔥 ensures proper tab width
+              width: "100%", 
             }}
             onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
           >
@@ -230,7 +228,7 @@ export const HomeContent: React.FC = () => {
                   style={({ pressed }) => [
                     styles.tab,
                     { opacity: pressed ? 0.7 : 1 },
-                    { width: TAB_WIDTH }, // 🔥 ensures equal tab width
+                    { width: TAB_WIDTH }, 
                   ]}
                   onPress={() => handlePress(index, tab)}
                 >
@@ -250,8 +248,6 @@ export const HomeContent: React.FC = () => {
                 </HapticPressable>
               ))}
             </View>
-
-            {/* Sliding Indicator */}
             <Animated.View
               style={{
                 position: "absolute",
