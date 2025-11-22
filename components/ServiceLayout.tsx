@@ -34,7 +34,7 @@ export const ServiceLayout: React.FC<ServiceLayoutProps> = ({
         </View>
       )}
 
-      <View>{children}</View>
+      <View style={styles.childrenContainer}>{children}</View>
 
       {showBottomImage && bottomImage && (
         <View style={styles.bottomImageContainer}>
@@ -59,6 +59,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '600',
+  },
+  childrenContainer: {
+    flex: 1,
   },
   bottomImageContainer: {
     position: 'absolute',
