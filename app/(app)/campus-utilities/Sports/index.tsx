@@ -16,7 +16,7 @@ export default function SportsSection() {
       title: 'Return Equipment',
       description: 'Quick and easy equipment returns',
       color: '#4CAF50',
-      route: ''
+      route: '/(app)/campus-utilities/Sports/Return'
     },
     {
       id: 'complaint',

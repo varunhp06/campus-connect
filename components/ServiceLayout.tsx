@@ -34,7 +34,7 @@ export const ServiceLayout: React.FC<ServiceLayoutProps> = ({
         </View>
       )}
 
-      <View>{children}</View>
+      <View style={[{height:'92%'}]}>{children}</View>
 
       {showBottomImage && bottomImage && (
         <View style={styles.bottomImageContainer}>
@@ -50,7 +50,7 @@ export const ServiceLayout: React.FC<ServiceLayoutProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1 , },
   header: {
     marginTop: 20,
     paddingHorizontal: 20,
