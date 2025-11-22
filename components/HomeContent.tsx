@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,12 +9,13 @@ import {
   ImageSourcePropType,
   Animated,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
 import { useTheme } from "./ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import HapticPressable from "./HapticPressable";
-import { activities } from "./data/activities";
+import { fetchActivities } from "./data/activities"; // Import the fetch function instead
 import ButtonComp from "./ButtonComp";
 
 interface UtilityCard {
@@ -28,7 +29,7 @@ interface UtilityCard {
 
 interface ActivityItem {
   id: string;
-  date: string;
+  date: string; // Changed from number to string to match your original interface
   tab: string;
   month: string;
   year: number;
@@ -42,11 +43,27 @@ export const HomeContent: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<
     "SPORTS" | "CULT" | "TECH" | "ALL"
   >("SPORTS");
+  
+  // Add state for activities
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const translateX = useRef(new Animated.Value(0)).current;
   const [containerWidth, setContainerWidth] = useState(0);
 
   const TAB_WIDTH = containerWidth / 4;
+
+  // Fetch activities from Firestore
+  useEffect(() => {
+    const loadActivities = async () => {
+      setIsLoading(true);
+      const fetchedActivities = await fetchActivities();
+      setActivities(fetchedActivities);
+      setIsLoading(false);
+    };
+
+    loadActivities();
+  }, []);
 
   const handlePress = (index: number, tab: string) => {
     setSelectedTab(tab as typeof selectedTab);
@@ -217,7 +234,7 @@ export const HomeContent: React.FC = () => {
           <View
             style={{
               position: "relative",
-              width: "100%", 
+              width: "100%",
             }}
             onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
           >
@@ -228,7 +245,7 @@ export const HomeContent: React.FC = () => {
                   style={({ pressed }) => [
                     styles.tab,
                     { opacity: pressed ? 0.7 : 1 },
-                    { width: TAB_WIDTH }, 
+                    { width: TAB_WIDTH },
                   ]}
                   onPress={() => handlePress(index, tab)}
                 >
@@ -277,7 +294,22 @@ export const HomeContent: React.FC = () => {
             },
           ]}
         >
-          {filteredActivities.length === 0 ? (
+          {isLoading ? (
+            <View
+              style={{
+                minHeight: 300,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <ActivityIndicator size="large" color={tabColors[selectedTab]} />
+              <Text
+                style={{ color: theme.placeholder, marginTop: 12 }}
+              >
+                Loading activities...
+              </Text>
+            </View>
+          ) : filteredActivities.length === 0 ? (
             <ScrollView
               nestedScrollEnabled={true}
               showsVerticalScrollIndicator={false}
