@@ -21,6 +21,7 @@ interface Utility {
   title: string;
   description: string;
   status?: string;
+  params?: any; // Add this line
 }
 
 interface Theme {
@@ -32,10 +33,26 @@ interface Theme {
 interface ButtonProps {
   utility: Utility;
   theme: Theme;
-  router:Router;
+  router: Router;
 }
 
 function ButtonComp({ utility, theme, router }: ButtonProps) {
+  const handlePress = () => {
+    if (!utility.route) {
+      alert("Coming soon 🚧");
+      return;
+    }
+
+    if (utility.params) {
+      router.push({
+        pathname: utility.route,
+        params: utility.params
+      });
+    } else {
+      router.push(utility.route);
+    }
+  };
+
   return (
     <HapticPressable
       disabled={
@@ -49,9 +66,7 @@ function ButtonComp({ utility, theme, router }: ButtonProps) {
           opacity: pressed ? 0.7 : 1,
         },
       ]}
-      onPress={() =>
-        utility.route ? router.push(utility.route) : alert("Coming soon 🚧")
-      }
+      onPress={handlePress}
     >
       <View
         style={[styles.utilityBorder, { backgroundColor: utility.color }]}
@@ -63,7 +78,7 @@ function ButtonComp({ utility, theme, router }: ButtonProps) {
           resizeMode="contain"
         />
       )}
-      <View style={[styles.utilityContent, { marginLeft: utility.icon ? 0 : 12 , marginRight: utility.icon ? 0 : 12}]}>
+      <View style={[styles.utilityContent, { marginLeft: utility.icon ? 0 : 12, marginRight: utility.icon ? 0 : 12 }]}>
         <Text style={[styles.utilityTitle, { color: utility.color }]}>
           {utility.title}
         </Text>

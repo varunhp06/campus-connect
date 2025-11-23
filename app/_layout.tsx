@@ -9,6 +9,7 @@ import {
 import { ThemeProvider } from "../components/ThemeContext";
 import { DrawerProvider } from "@/components/DrawerContext";
 import { EquipmentProvider } from "@/components/EquipmentContext";
+import { DepartmentProvider } from "@/components/DepartmentContext";
 import { CanteenProvider } from "@/components/CanteenContext";
 
 SplashScreen.preventAutoHideAsync();
@@ -34,7 +35,8 @@ export default function RootLayout() {
       <EquipmentProvider>
         <CanteenProvider>
           <DrawerProvider>
-            <Stack
+            <DepartmentProvider>
+          <Stack
               screenOptions={{
                 headerShown: false,
               }}
@@ -52,7 +54,8 @@ export default function RootLayout() {
                 }}
               />
             </Stack>
-          </DrawerProvider>
+            </DepartmentProvider>
+        </DrawerProvider>
         </CanteenProvider>
       </EquipmentProvider>
     </ThemeProvider>

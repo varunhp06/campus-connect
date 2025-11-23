@@ -187,7 +187,7 @@ export const HomeContent: React.FC = () => {
       description: "Find personnel details with contact info",
       icon: require("../assets/images/icons/administration.png"),
       color: "#2196F3",
-      route: "/campus-services/AdministrationSection",
+      route: "/campus-services/administration",
     },
     {
       id: "2",
