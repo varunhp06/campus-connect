@@ -7,8 +7,11 @@ export default function SportsLayout() {
         headerShown: false,
       }}
     >
-      <Stack.Screen name="Rent" />
-      <Stack.Screen name="Return" />
+      <Stack.Screen name="Rent/index" />
+      <Stack.Screen name="Return/index" />
+      <Stack.Screen name="Inventory/index" />
+      <Stack.Screen name="EntryLogs/index" />
+      <Stack.Screen name="ScanQr/index" />
     </Stack>
   );
 }

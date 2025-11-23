@@ -32,6 +32,12 @@ export default function RootLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen 
+        name="EventsManagementScreen" 
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

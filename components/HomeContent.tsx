@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,13 +9,16 @@ import {
   ImageSourcePropType,
   Animated,
   Dimensions,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { router } from "expo-router";
 import { useTheme } from "./ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import HapticPressable from "./HapticPressable";
-import { activities } from "./data/activities";
+import { fetchActivities } from "./data/activities";
 import ButtonComp from "./ButtonComp";
+import { checkUserHasEventManagementAccess } from "./EventsManagementContent";
 
 interface UtilityCard {
   id: string;
@@ -42,11 +45,53 @@ export const HomeContent: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<
     "SPORTS" | "CULT" | "TECH" | "ALL"
   >("SPORTS");
+  
+  // Add state for activities
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Add state for event management access
+  const [hasEventManagementAccess, setHasEventManagementAccess] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+
+  // Add state for pull-to-refresh
+  const [refreshing, setRefreshing] = useState(false);
 
   const translateX = useRef(new Animated.Value(0)).current;
   const [containerWidth, setContainerWidth] = useState(0);
 
   const TAB_WIDTH = containerWidth / 4;
+
+  // Fetch activities from Firestore
+  const loadActivities = async () => {
+    const fetchedActivities = await fetchActivities();
+    setActivities(fetchedActivities);
+  };
+
+  // Check if user has event management access
+  const checkAccess = async () => {
+    const hasAccess = await checkUserHasEventManagementAccess();
+    setHasEventManagementAccess(hasAccess);
+  };
+
+  // Initial load
+  useEffect(() => {
+    const initialLoad = async () => {
+      setIsLoading(true);
+      await Promise.all([loadActivities(), checkAccess()]);
+      setIsLoading(false);
+      setCheckingAccess(false);
+    };
+
+    initialLoad();
+  }, []);
+
+  // Pull-to-refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([loadActivities(), checkAccess()]);
+    setRefreshing(false);
+  };
 
   const handlePress = (index: number, tab: string) => {
     setSelectedTab(tab as typeof selectedTab);
@@ -165,6 +210,16 @@ export const HomeContent: React.FC = () => {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.background }]}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={theme.primaryText}
+          colors={[theme.primaryText]}
+          title="Pull to refresh"
+          titleColor={theme.text}
+        />
+      }
     >
       <View style={styles.searchContainer}>
         <View style={styles.searchIconContainer}>
@@ -217,7 +272,7 @@ export const HomeContent: React.FC = () => {
           <View
             style={{
               position: "relative",
-              width: "100%", 
+              width: "100%",
             }}
             onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
           >
@@ -228,7 +283,7 @@ export const HomeContent: React.FC = () => {
                   style={({ pressed }) => [
                     styles.tab,
                     { opacity: pressed ? 0.7 : 1 },
-                    { width: TAB_WIDTH }, 
+                    { width: TAB_WIDTH },
                   ]}
                   onPress={() => handlePress(index, tab)}
                 >
@@ -277,7 +332,22 @@ export const HomeContent: React.FC = () => {
             },
           ]}
         >
-          {filteredActivities.length === 0 ? (
+          {isLoading ? (
+            <View
+              style={{
+                minHeight: 300,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <ActivityIndicator size="large" color={tabColors[selectedTab]} />
+              <Text
+                style={{ color: theme.placeholder, marginTop: 12 }}
+              >
+                Loading activities...
+              </Text>
+            </View>
+          ) : filteredActivities.length === 0 ? (
             <ScrollView
               nestedScrollEnabled={true}
               showsVerticalScrollIndicator={false}
@@ -346,16 +416,33 @@ export const HomeContent: React.FC = () => {
           )}
         </View>
 
-        <HapticPressable
-          style={({ pressed }) => [
-            styles.viewMoreButton,
-            { opacity: pressed ? 0.7 : 1 },
-            { backgroundColor: theme.inputBackground },
-          ]}
-          onPress={() => router.push("/events/AllEventsScreen")}
-        >
-          <Text style={styles.viewMoreText}>View All</Text>
-        </HapticPressable>
+        {/* Button Row with View All and Manage Events */}
+        <View style={styles.buttonRow}>
+          <HapticPressable
+            style={({ pressed }) => [
+              styles.viewAllButton,
+              { opacity: pressed ? 0.7 : 1 },
+              { backgroundColor: '#FF9800' },
+              hasEventManagementAccess && styles.halfWidthButton,
+            ]}
+            onPress={() => router.push("/events/AllEventsScreen")}
+          >
+            <Text style={styles.viewMoreText}>View All</Text>
+          </HapticPressable>
+
+          {!checkingAccess && hasEventManagementAccess && (
+            <HapticPressable
+              style={({ pressed }) => [
+                styles.viewAllButton,
+                { opacity: pressed ? 0.7 : 1 },
+                { backgroundColor: '#FF9800' },
+              ]}
+              onPress={() => router.push("/events/EventsManagementScreen")}
+            >
+              <Text style={styles.viewMoreText}>Manage Events</Text>
+            </HapticPressable>
+          )}
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -445,14 +532,26 @@ const styles = StyleSheet.create({
   activityTitle: { fontSize: 14, fontWeight: "600", marginBottom: 4 },
   activityDescription: { fontSize: 12 },
   divider: { height: 1, marginLeft: 78 },
-  viewMoreButton: {
+  buttonRow: {
+    flexDirection: "row",
+    marginTop: 8,
+    gap: 8,
+  },
+  viewAllButton: {
+    flex: 1,
     alignItems: "center",
     paddingVertical: 16,
-    marginTop: 8,
     borderRadius: 8,
-    backgroundColor: "#fff",
+    backgroundColor: "#FF9800",
     borderColor: "#FF9800",
     borderWidth: 2,
   },
-  viewMoreText: { color: "#FF9800", fontSize: 16, fontWeight: "600" },
+  halfWidthButton: {
+    flex: 1,
+  },
+  viewMoreText: { 
+    color: "#fff", 
+    fontSize: 16, 
+    fontWeight: "600" 
+  },
 });

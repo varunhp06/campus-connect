@@ -38,7 +38,7 @@ export default function RootLayout() {
         }}
       />
       <Stack.Screen
-        name="Sprots"
+        name="Sports"
         options={{
           headerShown: false,
         }}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,31 +6,26 @@ import {
   ScrollView,
   Alert,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useTheme } from './ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import HapticPressable from './HapticPressable';
 import * as Print from 'expo-print';
-import * as FileSystem from 'expo-file-system/legacy'; // ✅ stable, warning-free
-import * as IntentLauncher from 'expo-intent-launcher'; 
-import { activities } from './data/activities';
-
-
-interface ActivityItem {
-  id: string;
-  date: string;
-  tab: string;
-  month: string;
-  year: number;
-  title: string;
-  description: string;
-}
+import * as FileSystem from 'expo-file-system/legacy';
+import * as IntentLauncher from 'expo-intent-launcher';
+import { fetchActivities, ActivityItem } from './data/activities';
+import { ServiceLayout } from './ServiceLayout';
 
 export const AllEventsContent: React.FC = () => {
   const { theme } = useTheme();
   const [selectedTab, setSelectedTab] =
     useState<'SPORTS' | 'CULT' | 'TECH' | 'ALL'>('SPORTS');
   const [showUpcoming, setShowUpcoming] = useState(true);
+  
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const tabColors: Record<string, string> = {
     SPORTS: '#4CAF50',
@@ -38,6 +33,24 @@ export const AllEventsContent: React.FC = () => {
     TECH: '#2196F3',
     ALL: '#FF9800',
   };
+
+  useEffect(() => {
+    const loadActivities = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const fetchedActivities = await fetchActivities();
+        setActivities(fetchedActivities);
+      } catch (err) {
+        setError('Failed to load activities');
+        console.error('Error loading activities:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadActivities();
+  }, []);
 
   const isEventPassed = (date: string, month: string, year: number): boolean => {
     const monthMap: Record<string, number> = {
@@ -72,6 +85,11 @@ export const AllEventsContent: React.FC = () => {
   }, [sortedActivities, selectedTab, showUpcoming]);
 
   const generatePDF = async () => {
+    if (activities.length === 0) {
+      Alert.alert('No Events', 'There are no events to export.');
+      return;
+    }
+
     try {
       const eventsHTML = sortedActivities
         .map((a) => {
@@ -113,7 +131,6 @@ export const AllEventsContent: React.FC = () => {
       const pdfName = `Campus_Events_${new Date().getFullYear()}.pdf`;
 
       if (Platform.OS === 'android') {
-        // Ask user for "Downloads" folder access via Storage Access Framework
         const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
 
         if (permissions.granted) {
@@ -135,7 +152,6 @@ export const AllEventsContent: React.FC = () => {
           Alert.alert('Permission Denied', 'Cannot save file without permission.');
         }
       } else {
-        // iOS or Web fallback: Save in app directory
         const pdfPath = `${FileSystem.documentDirectory}${pdfName}`;
         await FileSystem.moveAsync({ from: uri, to: pdfPath });
         Alert.alert('Saved', `PDF saved to: ${pdfPath}`);
@@ -146,9 +162,62 @@ export const AllEventsContent: React.FC = () => {
     }
   };
 
+  const retryLoad = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const fetchedActivities = await fetchActivities();
+      setActivities(fetchedActivities);
+    } catch (err) {
+      setError('Failed to load activities');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FF9800" />
+          <Text style={{ color: theme.placeholder, marginTop: 12 }}>
+            Loading events...
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color={theme.placeholder} />
+          <Text style={[styles.errorText, { color: theme.placeholder }]}>
+            {error}
+          </Text>
+          <HapticPressable
+            style={({ pressed }) => [
+              styles.retryButton,
+              { opacity: pressed ? 0.7 : 1 },
+            ]}
+            onPress={retryLoad}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </HapticPressable>
+        </View>
+      </View>
+    );
+  }
+
   return (
+    <ServiceLayout
+          icon={"list"}
+          title={"Events List"}
+          showTitle={true}
+          showBottomImage={false}
+      >
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Header with PDF Button */}
       <View style={styles.headerSection}>
         <HapticPressable
           style={({ pressed }) => [
@@ -161,8 +230,6 @@ export const AllEventsContent: React.FC = () => {
           <Text style={styles.pdfButtonText}>Download PDF</Text>
         </HapticPressable>
       </View>
-
-      {/* Toggle */}
       <View style={styles.toggleContainer}>
         <View
           style={[
@@ -211,8 +278,6 @@ export const AllEventsContent: React.FC = () => {
           </HapticPressable>
         </View>
       </View>
-
-      {/* Tabs */}
       <View
         style={[
           styles.tabContainer,
@@ -246,8 +311,6 @@ export const AllEventsContent: React.FC = () => {
           </HapticPressable>
         ))}
       </View>
-
-      {/* Events List */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -322,11 +385,40 @@ export const AllEventsContent: React.FC = () => {
         )}
       </ScrollView>
     </View>
+    </ServiceLayout>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  errorText: {
+    fontSize: 16,
+    marginTop: 16,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#FF9800',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   headerSection: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8, alignItems: 'flex-end' },
   pdfButton: {
     flexDirection: 'row',
