@@ -32,13 +32,19 @@ export default function RootLayout() {
       }}
     >
       <Stack.Screen
-        name="CycleSection"
+        name="Canteen/index"
         options={{
           headerShown: false,
         }}
       />
       <Stack.Screen
-        name="NightDeliverySection"
+        name="Sprots"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="CycleSection"
         options={{
           headerShown: false,
         }}

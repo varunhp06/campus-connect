@@ -30,17 +30,32 @@ import {
 const icon = "football";
 const title = "Sports Equipment";
 
+type Equipment = {
+  id: string;
+  name: string;
+  sport: string;
+  stock: number;
+  rented?: number;
+  img?: string;
+};
 
+type RentedItem = {
+  id: string;
+  name: string;
+  quantity: number;
+};
+
+type SportName = "Football" | "Basketball" | "Tennis" | "Cricket" | "Chess" | "Kabaddi";
 
 export default function Page() {
-  const [equipmentData, setEquipmentData] = useState([]);
+  const [equipmentData, setEquipmentData] = useState<Equipment[]>([]);
   const [loading, setLoading] = useState(true);
 
   const { theme, isDarkMode } = useTheme();
   const { cart, updateQuantity, getTotalItems, clearCart } = useEquipment();
 
   // This should come from user profile/context
-  const userSport = "Football";
+  const userSport: SportName = "Football";
   const userId = "user_123";
 
   const fetchEquipment = async () => {
@@ -48,7 +63,10 @@ export default function Page() {
       setLoading(true);
       const equipmentRef = collection(db, "equipment");
       const snapshot = await getDocs(equipmentRef);
-      const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const list = snapshot.docs.map((docSnap) => ({ 
+        id: docSnap.id, 
+        ...docSnap.data() 
+      } as Equipment));
       const userEquipment = list.filter((item) => item.sport === userSport);
       setEquipmentData(userEquipment);
     } catch (error) {
@@ -59,7 +77,7 @@ export default function Page() {
   };
 
   const rentAllEquipment = async () => {
-    let rentedItems = [];
+    const rentedItems: RentedItem[] = [];
     try {
       for (const itemId in cart) {
         const quantity = cart[itemId].quantity;
@@ -100,14 +118,14 @@ export default function Page() {
     console.log("Total items in cart:", equipmentData);
   }, [cart]);
 
-  const handleQuantityChange = (item, change) => {
+  const handleQuantityChange = (item: Equipment, change: number) => {
     const currentQty = cart[item.id]?.quantity || 0;
     const newQty = Math.max(0, Math.min(currentQty + change, item.stock));
     updateQuantity(item.id, newQty);
   };
 
-  const getSportIcon = (sport) => {
-    const icons = {
+  const getSportIcon = (sport: string): keyof typeof Ionicons.glyphMap => {
+    const icons: Record<SportName, keyof typeof Ionicons.glyphMap> = {
       Football: "football",
       Basketball: "basketball",
       Tennis: "tennisball",
@@ -115,16 +133,15 @@ export default function Page() {
       Chess: "grid",
       Kabaddi: "fitness",
     };
-    return icons[sport] || "trophy";
+    return icons[sport as SportName] || "trophy";
   };
 
-  const renderEquipmentCard = (item) => {
+  const renderEquipmentCard = ({ item }: { item: Equipment }) => {
     const quantity = cart[item.id]?.quantity || 0;
     const isOutOfStock = item.stock === 0;
 
     return (
       <View
-        key={item.id}
         style={[
           styles.equipmentCard,
           { backgroundColor: isDarkMode ? "#0c2314ff" : "#FFFFFF" },
@@ -360,7 +377,7 @@ export default function Page() {
                 <Text
                   style={{
                     color: isDarkMode ? "#F1F5F9" : "#0F172A",
-                    fontWeight: 500,
+                    fontWeight: "500",
                   }}
                 >
                   Reset
@@ -385,7 +402,7 @@ export default function Page() {
             <FlatList
               data={equipmentData}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => renderEquipmentCard(item)}
+              renderItem={renderEquipmentCard}
               numColumns={2} // <-- 2 per row
               columnWrapperStyle={styles.rowWrapper} // spacing
               showsVerticalScrollIndicator={false}

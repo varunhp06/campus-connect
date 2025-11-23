@@ -25,8 +25,21 @@ import { ServiceLayout } from "@/components/ServiceLayout";
 
 const title = "Return Equipment";
 
+type RentedItem = {
+  id: string;
+  name: string;
+  quantity: number;
+};
+
+type RentedRecord = {
+  id: string;
+  userId: string;
+  timestamp?: { seconds: number; nanoseconds: number };
+  items: RentedItem[];
+};
+
 export default function ReturnPage() {
-  const [rentedRecords, setRentedRecords] = useState([]);
+  const [rentedRecords, setRentedRecords] = useState<RentedRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [returning, setReturning] = useState(false);
   const fadeAnim = useState(new Animated.Value(0))[0];
@@ -41,7 +54,7 @@ export default function ReturnPage() {
       const snapshot = await getDocs(rentedRef);
 
       const list = snapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as RentedRecord))
         .filter((item) => item.userId === userId);
 
       setRentedRecords(list);
@@ -98,7 +111,12 @@ export default function ReturnPage() {
     );
   };
 
-  const returnSingleItem = async (recordId, itemId, quantity, itemName) => {
+  const returnSingleItem = async (
+    recordId: string, 
+    itemId: string, 
+    quantity: number, 
+    itemName: string
+  ) => {
     Alert.alert(
       "Return Item",
       `Return ${quantity} ${itemName}${quantity > 1 ? 's' : ''}?`,
@@ -108,7 +126,6 @@ export default function ReturnPage() {
           text: "Return",
           onPress: async () => {
             try {
-              // Update equipment stock
               const equipmentRef = doc(db, "equipment", itemId);
               await updateDoc(equipmentRef, {
                 rented: increment(-quantity),
@@ -116,6 +133,8 @@ export default function ReturnPage() {
 
               // Find the record and update items array
               const record = rentedRecords.find(r => r.id === recordId);
+              if (!record) return;
+
               const updatedItems = record.items.filter(item => item.id !== itemId);
 
               if (updatedItems.length === 0) {
@@ -157,7 +176,7 @@ export default function ReturnPage() {
     return rentedRecords.length;
   };
 
-  const renderRentedCard = (record, index) => {
+  const renderRentedCard = (record: RentedRecord, index: number) => {
     const cartItems = record.items || [];
     const totalItemsInRecord = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -210,13 +229,13 @@ export default function ReturnPage() {
 
         {/* Items List */}
         <View style={styles.itemsList}>
-          {cartItems.map((item, index) => (
+          {cartItems.map((item, itemIndex) => (
             <View
               key={item.id}
               style={[
                 styles.itemRow,
                 { borderBottomColor: isDarkMode ? "#334155" : "#F1F5F9" },
-                index === cartItems.length - 1 && styles.lastItem,
+                itemIndex === cartItems.length - 1 && styles.lastItem,
               ]}
             >
               <View style={styles.itemInfo}>
@@ -248,30 +267,6 @@ export default function ReturnPage() {
           <Text style={[styles.footerText, { color: isDarkMode ? "#94A3B8" : "#64748B" }]}>
             {cartItems.length} item type{cartItems.length !== 1 ? 's' : ''}
           </Text>
-          <TouchableOpacity 
-            style={styles.quickReturnButton}
-            onPress={() => {
-              // Return all items in this record
-              const itemNames = cartItems.map(item => `${item.quantity} ${item.name}`).join(', ');
-              Alert.alert(
-                "Return All Items",
-                `Return all items from this rental? (${itemNames})`,
-                [
-                  { text: "Cancel", style: "cancel" },
-                  {
-                    text: "Return All",
-                    onPress: () => {
-                      cartItems.forEach(item => {
-                        returnSingleItem(record.id, item.id, item.quantity, item.name);
-                      });
-                    }
-                  }
-                ]
-              );
-            }}
-          >
-            <Text style={styles.quickReturnText}>Return All</Text>
-          </TouchableOpacity>
         </View>
       </Animated.View>
     );

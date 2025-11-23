@@ -64,7 +64,7 @@ export const HomeContent: React.FC = () => {
         "Late-night food orders delivered to your hostel after mess hours",
       icon: require("../assets/images/icons/night-delivery.png"),
       color: "#2196F3",
-      route: "/campus-utilities/NightDeliverySection",
+      route: "/campus-utilities/",
     },
     {
       id: "2",
