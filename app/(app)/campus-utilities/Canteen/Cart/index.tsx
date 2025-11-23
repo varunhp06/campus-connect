@@ -1,168 +1,174 @@
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
   TouchableOpacity,
   Alert,
   Image,
-  ActivityIndicator
-} from 'react-native';
-import React, { useState, useEffect } from 'react';
-import { Ionicons } from '@expo/vector-icons';
-import { ThemedLayout } from '@/components/ThemedLayout';
-import { ServiceLayout } from '@/components/ServiceLayout';
-import { useTheme } from '@/components/ThemeContext';
-import { db } from '../../../../../firebaseConfig';
-import { 
-  collection, 
-  getDocs, 
-  addDoc, 
-  deleteDoc,
-  doc,
-  serverTimestamp 
-} from 'firebase/firestore';
+  ActivityIndicator,
+} from "react-native";
+import React, { useState, useEffect } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { ThemedLayout } from "@/components/ThemedLayout";
+import { ServiceLayout } from "@/components/ServiceLayout";
+import { useTheme } from "@/components/ThemeContext";
+import { db } from "../../../../../firebaseConfig";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  onSnapshot,
+  serverTimestamp,
+} from "firebase/firestore";
+import { useCanteen, CanteenCartItem } from "@/components/CanteenContext";
 
-type CartItem = {
+type Order = {
   id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image?: string;
-  shopId?: string;
+  userId: string;
+  shopId: string;
+  items: CanteenCartItem[];
+  total: number;
+  timestamp: any;
+  status: string;
 };
 
 const icon = "cart";
 const title = "My Cart";
 
 const Index = () => {
-  const [cart, setCart] = useState<Record<string, CartItem>>({});
-  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"cart" | "orders">("cart");
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
   const [ordering, setOrdering] = useState(false);
   const { theme, isDarkMode } = useTheme();
-  
+  const {
+    cart,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    getTotalItems,
+    getTotalPrice,
+    getCartItems,
+  } = useCanteen();
+
   const userId = "user_123"; // Replace with actual user ID from context
 
-  // Load cart from storage or context
+  // Load pending orders
   useEffect(() => {
-    loadCart();
-  }, []);
+    if (activeTab === "orders") {
+      loadPendingOrders();
+    }
+  }, [activeTab]);
 
-  const loadCart = async () => {
+  // Real-time listener for orders
+  useEffect(() => {
+    const ordersRef = collection(db, "orders");
+    const q = query(
+      ordersRef,
+      where("userId", "==", userId),
+      where("status", "in", ["pending", "preparing", "Not Available"])
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const ordersList: Order[] = snapshot.docs
+        .map(
+          (doc) =>
+            ({
+              id: doc.id,
+              ...doc.data(),
+            } as Order)
+        )
+        .sort((a, b) => {
+          // Sort by timestamp manually (newest first)
+          const timeA = a.timestamp?.toMillis?.() || 0;
+          const timeB = b.timestamp?.toMillis?.() || 0;
+          return timeB - timeA;
+        });
+      setOrders(ordersList);
+    });
+
+    return () => unsubscribe();
+  }, [userId]);
+
+  const loadPendingOrders = async () => {
     try {
-      setLoading(true);
-      // Add your cart loading logic here
-      // For now, using mock data
-      const mockCart: Record<string, CartItem> = {
-        "1": {
-          id: "1",
-          name: "Burger",
-          price: 150,
-          quantity: 2,
-          image: "https://via.placeholder.com/100",
-          shopId: "shop_1"
-        },
-        "2": {
-          id: "2",
-          name: "Pizza",
-          price: 299,
-          quantity: 1,
-          image: "https://via.placeholder.com/100",
-          shopId: "shop_1"
-        }
-      };
-      setCart(mockCart);
+      setLoadingOrders(true);
+      const ordersRef = collection(db, "orders");
+      const q = query(
+        ordersRef,
+        where("userId", "==", userId),
+        where("status", "in", ["pending", "preparing"])
+      );
+
+      const snapshot = await getDocs(q);
+      const ordersList: Order[] = snapshot.docs
+        .map(
+          (doc) =>
+            ({
+              id: doc.id,
+              ...doc.data(),
+            } as Order)
+        )
+        .sort((a, b) => {
+          // Sort by timestamp manually (newest first)
+          const timeA = a.timestamp?.toMillis?.() || 0;
+          const timeB = b.timestamp?.toMillis?.() || 0;
+          return timeB - timeA;
+        });
+
+      setOrders(ordersList);
     } catch (error) {
-      console.log("Error loading cart:", error);
+      console.log("Error loading orders:", error);
+      Alert.alert("Error", "Failed to load orders");
     } finally {
-      setLoading(false);
+      setLoadingOrders(false);
     }
   };
 
-  const incrementQuantity = (itemId: string) => {
-    setCart((prev) => {
-      const item = prev[itemId];
-      if (!item) return prev;
-      
-      return {
-        ...prev,
-        [itemId]: {
-          ...item,
-          quantity: item.quantity + 1,
-        },
-      };
-    });
+  const handleIncrement = (itemId: string) => {
+    const currentQuantity = cart[itemId]?.quantity || 0;
+    updateQuantity(itemId, currentQuantity + 1);
   };
 
-  const decrementQuantity = (itemId: string) => {
-    setCart((prev) => {
-      const item = prev[itemId];
-      if (!item) return prev;
-      
-      if (item.quantity > 1) {
-        return {
-          ...prev,
-          [itemId]: {
-            ...item,
-            quantity: item.quantity - 1,
-          },
-        };
-      } else {
-        // Remove item if quantity becomes 0
-        const { [itemId]: _, ...rest } = prev;
-        return rest;
-      }
-    });
+  const handleDecrement = (itemId: string) => {
+    const currentQuantity = cart[itemId]?.quantity || 0;
+    if (currentQuantity > 1) {
+      updateQuantity(itemId, currentQuantity - 1);
+    } else {
+      removeFromCart(itemId);
+    }
   };
 
-  const removeItem = (itemId: string, itemName: string) => {
-    Alert.alert(
-      "Remove Item",
-      `Remove ${itemName} from cart?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: () => {
-            setCart((prev) => {
-              const { [itemId]: _, ...rest } = prev;
-              return rest;
-            });
-          },
-        },
-      ]
-    );
+  const handleRemoveItem = (itemId: string, itemName: string) => {
+    Alert.alert("Remove Item", `Remove ${itemName} from cart?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => removeFromCart(itemId),
+      },
+    ]);
   };
 
-  const clearCart = () => {
-    Alert.alert(
-      "Clear Cart",
-      "Remove all items from cart?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Clear All",
-          style: "destructive",
-          onPress: () => setCart({}),
-        },
-      ]
-    );
-  };
-
-  const getTotalItems = () => {
-    return Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
-  };
-
-  const getTotalPrice = () => {
-    return Object.values(cart).reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
+  const handleClearCart = () => {
+    Alert.alert("Clear Cart", "Remove all items from cart?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Clear All",
+        style: "destructive",
+        onPress: () => clearCart(),
+      },
+    ]);
   };
 
   const placeOrder = async () => {
     if (getTotalItems() === 0) return;
+
+    const cartItems = getCartItems();
+    const shopId = cartItems[0]?.shopId || "";
 
     Alert.alert(
       "Place Order",
@@ -174,18 +180,29 @@ const Index = () => {
           onPress: async () => {
             try {
               setOrdering(true);
-              const orderItems = Object.values(cart);
 
               await addDoc(collection(db, "orders"), {
                 userId,
-                items: orderItems,
+                shopId,
+                items: cartItems,
                 total: getTotalPrice(),
                 timestamp: serverTimestamp(),
                 status: "pending",
               });
 
-              Alert.alert("Success", "Your order has been placed!");
-              setCart({});
+              Alert.alert(
+                "Success",
+                "Your order has been placed! Waiting for shop approval.",
+                [
+                  {
+                    text: "OK",
+                    onPress: () => {
+                      clearCart();
+                      setActiveTab("orders");
+                    },
+                  },
+                ]
+              );
             } catch (error) {
               console.log("Error placing order:", error);
               Alert.alert("Error", "Failed to place order. Please try again.");
@@ -198,81 +215,127 @@ const Index = () => {
     );
   };
 
-  const renderCartItem = (item: CartItem) => {
+  const renderCartItem = (item: CanteenCartItem) => {
     return (
       <View
         key={item.id}
         style={[
           styles.cartItem,
-          { backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF" },
+          {
+            backgroundColor: isDarkMode
+              ? "rgba(30, 41, 59, 0.8)"
+              : "rgba(255, 255, 255, 0.9)",
+            borderColor: isDarkMode
+              ? "rgba(255, 255, 255, 0.1)"
+              : "rgba(0, 0, 0, 0.05)",
+          },
         ]}
       >
-        {/* Item Image */}
-        <Image
-          source={
-            item.image 
-              ? { uri: item.image }
-              : require("../../../../../assets/images/placeholder.png")
-          }
-          style={styles.itemImage}
-          resizeMode="cover"
-        />
+        {/* Item Image with Overlay */}
+        <View style={styles.imageContainer}>
+          <Image
+            source={
+              item.img
+                ? { uri: item.img }
+                : require("../../../../../assets/images/placeholder.png")
+            }
+            style={styles.itemImage}
+            resizeMode="cover"
+          />
+          <View style={styles.quantityOverlay}>
+            <Text style={styles.quantityOverlayText}>{item.quantity}x</Text>
+          </View>
+        </View>
 
         {/* Item Details */}
         <View style={styles.itemDetails}>
-          <Text
-            style={[
-              styles.itemName,
-              { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
-            ]}
-          >
-            {item.name}
-          </Text>
-          <Text
-            style={[
-              styles.itemPrice,
-              { color: isDarkMode ? "#10B981" : "#059669" },
-            ]}
-          >
-            ₹{item.price.toFixed(2)}
-          </Text>
+          <View style={styles.textContainer}>
+            <Text
+              style={[
+                styles.itemName,
+                { color: isDarkMode ? "#F8FAFC" : "#0F172A" },
+              ]}
+              numberOfLines={2}
+            >
+              {item.name}
+            </Text>
+            <Text
+              style={[
+                styles.itemPrice,
+                { color: isDarkMode ? "#00b3ffff" : "#006efdff" },
+              ]}
+            >
+              ₹{item.price.toFixed(2)}
+            </Text>
+          </View>
 
           {/* Quantity Controls */}
           <View style={styles.quantityContainer}>
             <TouchableOpacity
               style={[
                 styles.quantityBtn,
-                { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" },
+                {
+                  backgroundColor: isDarkMode
+                    ? "rgba(51, 65, 85, 0.6)"
+                    : "rgba(241, 245, 249, 0.8)",
+                  borderColor: isDarkMode
+                    ? "rgba(100, 116, 139, 0.3)"
+                    : "rgba(203, 213, 225, 0.5)",
+                },
               ]}
-              onPress={() => decrementQuantity(item.id)}
+              onPress={() => handleDecrement(item.id)}
             >
               <Ionicons
-                name="remove"
-                size={18}
-                color={isDarkMode ? "#F1F5F9" : "#0F172A"}
+                name={item.quantity === 1 ? "trash-outline" : "remove"}
+                size={16}
+                color={
+                  item.quantity === 1
+                    ? "#EF4444"
+                    : isDarkMode
+                    ? "#94A3B8"
+                    : "#64748B"
+                }
               />
             </TouchableOpacity>
 
-            <Text
+            <View
               style={[
-                styles.quantityText,
-                { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
+                styles.quantityDisplay,
+                {
+                  backgroundColor: isDarkMode
+                    ? "rgba(60, 83, 136, 0.4)"
+                    : "rgba(248, 250, 252, 0.8)",
+                },
               ]}
             >
-              {item.quantity}
-            </Text>
+              <Text
+                style={[
+                  styles.quantityText,
+                  { color: isDarkMode ? "#0095ffff" : "#006effff" },
+                ]}
+              >
+                {item.quantity}
+              </Text>
+            </View>
 
             <TouchableOpacity
               style={[
                 styles.quantityBtn,
-                { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" },
+                {
+                  backgroundColor: isDarkMode
+                    ? "rgba(51, 65, 85, 0.6)"
+                    : "rgba(241, 245, 249, 0.8)",
+                  borderColor: isDarkMode
+                    ? "rgba(100, 116, 139, 0.3)"
+                    : "rgba(203, 213, 225, 0.5)",
+                },
               ]}
-              onPress={() => incrementQuantity(item.id)}
+              onPress={() => handleIncrement(item.id)}
             >
               <Ionicons
                 name="add"
-                size={18}
-                color={isDarkMode ? "#F1F5F9" : "#0F172A"}
+                size={16}
+                color={isDarkMode ? "#94A3B8" : "#64748B"}
               />
             </TouchableOpacity>
           </View>
@@ -280,53 +343,177 @@ const Index = () => {
 
         {/* Item Total & Delete */}
         <View style={styles.itemActions}>
-          <Text
-            style={[
-              styles.itemTotal,
-              { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
-            ]}
-          >
-            ₹{(item.price * item.quantity).toFixed(2)}
-          </Text>
+          <View style={styles.totalContainer}>
+            <Text
+              style={[
+                styles.totalLabel,
+                { color: isDarkMode ? "#94A3B8" : "#64748B" },
+              ]}
+            >
+              Total
+            </Text>
+            <Text
+              style={[
+                styles.itemTotal,
+                { color: isDarkMode ? "#F8FAFC" : "#0F172A" },
+              ]}
+            >
+              ₹{(item.price * item.quantity).toFixed(2)}
+            </Text>
+          </View>
           <TouchableOpacity
-            style={styles.deleteBtn}
-            onPress={() => removeItem(item.id, item.name)}
+            style={[
+              styles.deleteBtn,
+              {
+                backgroundColor: isDarkMode
+                  ? "rgba(239, 68, 68, 0.15)"
+                  : "rgba(239, 68, 68, 0.08)",
+                borderColor: isDarkMode
+                  ? "rgba(239, 68, 68, 0.3)"
+                  : "rgba(239, 68, 68, 0.2)",
+              },
+            ]}
+            onPress={() => handleRemoveItem(item.id, item.name)}
           >
-            <Ionicons name="trash-outline" size={22} color="#EF4444" />
+            <Ionicons name="trash-outline" size={18} color="#EF4444" />
           </TouchableOpacity>
         </View>
       </View>
     );
   };
 
-  if (loading) {
+  const renderOrderItem = (order: Order) => {
+    const formatDate = (timestamp: any) => {
+      if (!timestamp) return "Just now";
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+    };
+
+    const getStatusColor = (status: string) => {
+      switch (status) {
+        case "pending":
+          return "#F59E0B";
+        case "preparing":
+          return "#10B981";
+        default:
+          return "#b73f3fff";
+      }
+    };
+
+    const getStatusIcon = (status: string) => {
+      switch (status) {
+        case "pending":
+          return "time-outline";
+        case "preparing":
+          return "restaurant-outline";
+        default:
+          return "checkmark-circle-outline";
+      }
+    };
+
     return (
-      <ThemedLayout
-        showNavbar={true}
-        navbarConfig={{
-          showHamburger: true,
-          showTitle: true,
-          showThemeToggle: true,
-        }}
+      <View
+        key={order.id}
+        style={[
+          styles.orderCard,
+          { backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF" },
+        ]}
       >
-        <ServiceLayout icon={icon} title={title} showTitle={true}>
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color="#10B981" />
+        {/* Order Header */}
+        <View style={styles.orderHeader}>
+          <View style={styles.orderHeaderLeft}>
             <Text
               style={[
-                styles.loadingText,
+                styles.orderId,
                 { color: isDarkMode ? "#94A3B8" : "#64748B" },
               ]}
             >
-              Loading cart...
+              Order #{order.id.slice(-6).toUpperCase()}
+            </Text>
+            <Text
+              style={[
+                styles.orderDate,
+                { color: isDarkMode ? "#64748B" : "#94A3B8" },
+              ]}
+            >
+              {formatDate(order.timestamp)}
             </Text>
           </View>
-        </ServiceLayout>
-      </ThemedLayout>
-    );
-  }
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: `${getStatusColor(order.status)}20` },
+            ]}
+          >
+            <Ionicons
+              name={getStatusIcon(order.status)}
+              size={16}
+              color={getStatusColor(order.status)}
+            />
+            <Text
+              style={[
+                styles.statusText,
+                { color: getStatusColor(order.status) },
+              ]}
+            >
+              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+            </Text>
+          </View>
+        </View>
 
-  const cartItems = Object.values(cart);
+        {/* Order Items */}
+        <View style={styles.orderItems}>
+          {order.items.map((item, index) => (
+            <View key={index} style={styles.orderItemRow}>
+              <Text
+                style={[
+                  styles.orderItemName,
+                  { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
+                ]}
+              >
+                {item.quantity}x {item.name}
+              </Text>
+              <Text
+                style={[
+                  styles.orderItemPrice,
+                  { color: isDarkMode ? "#94A3B8" : "#64748B" },
+                ]}
+              >
+                ₹{(item.price * item.quantity).toFixed(2)}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Order Total */}
+        <View
+          style={[
+            styles.orderFooter,
+            { borderTopColor: isDarkMode ? "#334155" : "#E2E8F0" },
+          ]}
+        >
+          <Text
+            style={[
+              styles.orderTotalLabel,
+              { color: isDarkMode ? "#94A3B8" : "#64748B" },
+            ]}
+          >
+            Total Amount
+          </Text>
+          <Text
+            style={[
+              styles.orderTotalValue,
+              { color: isDarkMode ? "#00a6ffff" : "#00a6ffff" },
+            ]}
+          >
+            ₹{order.total.toFixed(2)}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  const cartItems = getCartItems();
 
   return (
     <ThemedLayout
@@ -339,180 +526,297 @@ const Index = () => {
     >
       <ServiceLayout icon={icon} title={title} showTitle={true}>
         <View style={styles.container}>
-          {cartItems.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View
-                style={[
-                  styles.emptyIconContainer,
-                  { backgroundColor: "#10B98120" },
-                ]}
-              >
-                <Ionicons name="cart-outline" size={64} color="#10B981" />
-              </View>
+          {/* Tab Selector */}
+          <View
+            style={[
+              styles.tabContainer,
+              { backgroundColor: isDarkMode ? "#1E293B" : "#F8FAFC" },
+            ]}
+          >
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === "cart" && styles.activeTab,
+                activeTab === "cart" && { backgroundColor: "#4281eeff" },
+              ]}
+              onPress={() => setActiveTab("cart")}
+            >
+              <Ionicons
+                name="cart"
+                size={20}
+                color={
+                  activeTab === "cart"
+                    ? "#FFFFFF"
+                    : isDarkMode
+                    ? "#94A3B8"
+                    : "#64748B"
+                }
+              />
               <Text
                 style={[
-                  styles.emptyTitle,
-                  { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
+                  styles.tabText,
+                  activeTab === "cart" && styles.activeTabText,
+                  {
+                    color:
+                      activeTab === "cart"
+                        ? "#FFFFFF"
+                        : isDarkMode
+                        ? "#94A3B8"
+                        : "#64748B",
+                  },
                 ]}
               >
-                Your Cart is Empty
+                Cart
               </Text>
+              {getTotalItems() > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>{getTotalItems()}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === "orders" && styles.activeTab,
+                activeTab === "orders" && { backgroundColor: "#4281eeff" },
+              ]}
+              onPress={() => setActiveTab("orders")}
+            >
+              <Ionicons
+                name="receipt"
+                size={20}
+                color={
+                  activeTab === "orders"
+                    ? "#FFFFFF"
+                    : isDarkMode
+                    ? "#94A3B8"
+                    : "#64748B"
+                }
+              />
               <Text
                 style={[
-                  styles.emptySubtitle,
-                  { color: isDarkMode ? "#64748B" : "#94A3B8" },
+                  styles.tabText,
+                  activeTab === "orders" && styles.activeTabText,
+                  {
+                    color:
+                      activeTab === "orders"
+                        ? "#FFFFFF"
+                        : isDarkMode
+                        ? "#94A3B8"
+                        : "#64748B",
+                  },
                 ]}
               >
-                Add items to your cart to see them here.
+                Orders
               </Text>
-              <TouchableOpacity style={styles.browseButton}>
-                <Ionicons name="search" size={20} color="#FFFFFF" />
-                <Text style={styles.browseButtonText}>Browse Menu</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
+              {orders.length > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>{orders.length}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Cart Tab Content */}
+          {activeTab === "cart" && (
             <>
-              {/* Cart Header */}
-              <View
-                style={[
-                  styles.cartHeader,
-                  { backgroundColor: isDarkMode ? "#1E293B" : "#F8FAFC" },
-                ]}
-              >
-                <View style={styles.headerLeft}>
+              {cartItems.length === 0 ? (
+                <View style={styles.emptyState}>
                   <View
                     style={[
-                      styles.itemCountBadge,
+                      styles.emptyIconContainer,
                       { backgroundColor: "#10B98120" },
                     ]}
                   >
-                    <Ionicons name="cube" size={18} color="#10B981" />
-                    <Text
-                      style={[
-                        styles.itemCountText,
-                        { color: isDarkMode ? "#10B981" : "#059669" },
-                      ]}
-                    >
-                      {getTotalItems()} Items
-                    </Text>
+                    <Ionicons name="cart-outline" size={64} color="#006de9ff" />
                   </View>
+                  <Text
+                    style={[
+                      styles.emptyTitle,
+                      { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
+                    ]}
+                  >
+                    Your Cart is Empty
+                  </Text>
+                  <Text
+                    style={[
+                      styles.emptySubtitle,
+                      { color: isDarkMode ? "#64748B" : "#94A3B8" },
+                    ]}
+                  >
+                    Add items to your cart to see them here.
+                  </Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.clearButton}
-                  onPress={clearCart}
-                >
-                  <Ionicons
-                    name="trash-outline"
-                    size={18}
-                    color="#EF4444"
-                  />
-                  <Text style={styles.clearButtonText}>Clear All</Text>
-                </TouchableOpacity>
-              </View>
+              ) : (
+                <>
+                  
 
-              {/* Cart Items List */}
-              <ScrollView
-                style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {cartItems.map(renderCartItem)}
-              </ScrollView>
+                  {/* Cart Items List */}
+                  <ScrollView
+                    style={styles.scrollView}
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {cartItems.map(renderCartItem)}
+                  </ScrollView>
 
-              {/* Cart Summary */}
-              <View
-                style={[
-                  styles.cartSummaryBar,
-                  { backgroundColor: isDarkMode ? "#0F172A" : "#FFFFFF" },
-                ]}
-              >
-                <View style={styles.summaryDetails}>
-                  <View style={styles.summaryRow}>
-                    <Text
-                      style={[
-                        styles.summaryLabel,
-                        { color: isDarkMode ? "#94A3B8" : "#64748B" },
-                      ]}
-                    >
-                      Subtotal
-                    </Text>
-                    <Text
-                      style={[
-                        styles.summaryValue,
-                        { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
-                      ]}
-                    >
-                      ₹{getTotalPrice().toFixed(2)}
-                    </Text>
-                  </View>
-                  <View style={styles.summaryRow}>
-                    <Text
-                      style={[
-                        styles.summaryLabel,
-                        { color: isDarkMode ? "#94A3B8" : "#64748B" },
-                      ]}
-                    >
-                      Delivery Fee
-                    </Text>
-                    <Text
-                      style={[
-                        styles.summaryValue,
-                        { color: isDarkMode ? "#10B981" : "#059669" },
-                      ]}
-                    >
-                      Free
-                    </Text>
-                  </View>
+                  {/* Cart Summary */}
                   <View
                     style={[
-                      styles.divider,
-                      { backgroundColor: isDarkMode ? "#334155" : "#E2E8F0" },
+                      styles.cartSummaryBar,
+                      { backgroundColor: isDarkMode ? "#0F172A" : "#FFFFFF" },
                     ]}
-                  />
-                  <View style={styles.summaryRow}>
-                    <Text
-                      style={[
-                        styles.totalLabel,
-                        { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
-                      ]}
-                    >
-                      Total
-                    </Text>
-                    <Text
-                      style={[
-                        styles.totalValue,
-                        { color: isDarkMode ? "#10B981" : "#059669" },
-                      ]}
-                    >
-                      ₹{getTotalPrice().toFixed(2)}
-                    </Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={[
-                    styles.checkoutButton,
-                    ordering && styles.checkoutButtonDisabled,
-                  ]}
-                  onPress={placeOrder}
-                  disabled={ordering}
-                >
-                  {ordering ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <>
-                      <Text style={styles.checkoutButtonText}>
-                        Proceed to Checkout
-                      </Text>
-                      <Ionicons
-                        name="arrow-forward"
-                        size={20}
-                        color="#FFFFFF"
+                  >
+                    <View style={styles.summaryDetails}>
+                      <View style={styles.summaryRow}>
+                        <Text
+                          style={[
+                            styles.summaryLabel,
+                            { color: isDarkMode ? "#94A3B8" : "#64748B" },
+                          ]}
+                        >
+                          Subtotal
+                        </Text>
+                        <Text
+                          style={[
+                            styles.summaryValue,
+                            { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
+                          ]}
+                        >
+                          ₹{getTotalPrice().toFixed(2)}
+                        </Text>
+                      </View>
+                      <View style={styles.summaryRow}>
+                        <Text
+                          style={[
+                            styles.summaryLabel,
+                            { color: isDarkMode ? "#94A3B8" : "#64748B" },
+                          ]}
+                        >
+                          Delivery Fee
+                        </Text>
+                        <Text
+                          style={[
+                            styles.summaryValue,
+                            { color: isDarkMode ? "#00a6ffff" : "#0055ffff" },
+                          ]}
+                        >
+                          Free
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.divider,
+                          {
+                            backgroundColor: isDarkMode ? "#334155" : "#E2E8F0",
+                          },
+                        ]}
                       />
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
+                      <View style={styles.summaryRow}>
+                        <Text
+                          style={[
+                            styles.totalLabel,
+                            { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
+                          ]}
+                        >
+                          Total
+                        </Text>
+                        <Text
+                          style={[
+                            styles.totalValue,
+                            { color: isDarkMode ? "#1692ffff" : "#006effff" },
+                          ]}
+                        >
+                          ₹{getTotalPrice().toFixed(2)}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.checkoutButton,
+                        ordering && styles.checkoutButtonDisabled,
+                      ]}
+                      onPress={placeOrder}
+                      disabled={ordering}
+                    >
+                      {ordering ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <>
+                          <Text style={styles.checkoutButtonText}>
+                            Place Order
+                          </Text>
+                          <Ionicons
+                            name="arrow-forward"
+                            size={20}
+                            color="#FFFFFF"
+                          />
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </>
+          )}
+
+          {/* Orders Tab Content */}
+          {activeTab === "orders" && (
+            <>
+              {loadingOrders ? (
+                <View style={styles.centerContainer}>
+                  <ActivityIndicator size="large" color="#00b3ffff" />
+                  <Text
+                    style={[
+                      styles.loadingText,
+                      { color: isDarkMode ? "#94A3B8" : "#64748B" },
+                    ]}
+                  >
+                    Loading orders...
+                  </Text>
+                </View>
+              ) : orders.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <View
+                    style={[
+                      styles.emptyIconContainer,
+                      { backgroundColor: "#10B98120" },
+                    ]}
+                  >
+                    <Ionicons
+                      name="receipt-outline"
+                      size={64}
+                      color="#009dffff"
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.emptyTitle,
+                      { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
+                    ]}
+                  >
+                    No Pending Orders
+                  </Text>
+                  <Text
+                    style={[
+                      styles.emptySubtitle,
+                      { color: isDarkMode ? "#64748B" : "#94A3B8" },
+                    ]}
+                  >
+                    Your pending orders will appear here.
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView
+                  style={styles.scrollView}
+                  contentContainerStyle={styles.ordersScrollContent}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {orders.map(renderOrderItem)}
+                </ScrollView>
+              )}
             </>
           )}
         </View>
@@ -536,14 +840,62 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
   },
-  cartHeader: {
+  tabContainer: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
+    padding: 8,
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 12,
+    borderRadius: 16,
+    gap: 8,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    gap: 8,
+    position: "relative",
+  },
+  activeTab: {
+    shadowColor: "#1072b9ff",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tabText: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  activeTabText: {
+    fontWeight: "700",
+  },
+  tabBadge: {
+    backgroundColor: "#EF4444",
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    position: "absolute",
+    top: 6,
+    right: 10,
+  },
+  tabBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  cartHeader: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    padding: 16,
+    marginHorizontal: 16,
     borderRadius: 16,
   },
   headerLeft: {
@@ -581,10 +933,119 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 220,
   },
+  ordersScrollContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
   cartItem: {
     flexDirection: "row",
     padding: 16,
+    borderRadius: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  imageContainer: {
+    position: "relative",
+    marginRight: 16,
+  },
+  itemImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 14,
+  },
+  quantityOverlay: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    backgroundColor: "#188cffda",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 3,
+    minWidth: 30,
+    alignItems: "center",
+  },
+  quantityOverlayText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  itemDetails: {
+    flex: 1,
+    justifyContent: "space-between",
+  },
+  textContainer: {
+    marginBottom: 12,
+  },
+  itemName: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  itemPrice: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  quantityContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  quantityBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+  },
+  quantityDisplay: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    minWidth: 36,
+    alignItems: "center",
+  },
+  quantityText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  itemActions: {
+    alignItems: "flex-end",
+    gap: 12,
+  },
+  totalContainer: {
+    alignItems: "flex-end",
+  },
+  totalLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  itemTotal: {
+    fontSize: 17,
+    fontWeight: "800",
+  },
+  deleteBtn: {
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  orderCard: {
     borderRadius: 16,
+    padding: 16,
     marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -592,55 +1053,68 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  itemImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    marginRight: 12,
-  },
-  itemDetails: {
-    flex: 1,
+  orderHeader: {
+    flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
   },
-  itemName: {
-    fontSize: 16,
+  orderHeaderLeft: {
+    flex: 1,
+  },
+  orderId: {
+    fontSize: 14,
     fontWeight: "700",
     marginBottom: 4,
   },
-  itemPrice: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 8,
+  orderDate: {
+    fontSize: 12,
+    fontWeight: "500",
   },
-  quantityContainer: {
+  statusBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-  },
-  quantityBtn: {
-    width: 32,
-    height: 32,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 8,
-    justifyContent: "center",
+    gap: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  orderItems: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  orderItemRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
   },
-  quantityText: {
-    fontSize: 16,
-    fontWeight: "700",
-    minWidth: 24,
-    textAlign: "center",
+  orderItemName: {
+    fontSize: 14,
+    fontWeight: "600",
+    flex: 1,
   },
-  itemActions: {
+  orderItemPrice: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  orderFooter: {
+    flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-end",
+    alignItems: "center",
+    paddingTop: 16,
+    borderTopWidth: 1,
   },
-  itemTotal: {
+  orderTotalLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  orderTotalValue: {
     fontSize: 18,
     fontWeight: "800",
-    marginBottom: 8,
-  },
-  deleteBtn: {
-    padding: 8,
   },
   emptyState: {
     flex: 1,
@@ -667,20 +1141,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 24,
     marginBottom: 32,
-  },
-  browseButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#10B981",
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 16,
-    gap: 8,
-  },
-  browseButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
   },
   cartSummaryBar: {
     position: "absolute",
@@ -717,10 +1177,6 @@ const styles = StyleSheet.create({
     height: 1,
     marginVertical: 12,
   },
-  totalLabel: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
   totalValue: {
     fontSize: 22,
     fontWeight: "800",
@@ -729,7 +1185,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#10B981",
+    backgroundColor: "#1070b9ff",
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 14,
@@ -745,4 +1201,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Index
+export default Index;

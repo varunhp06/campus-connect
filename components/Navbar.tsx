@@ -72,14 +72,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
 
         {showTitle && (
-          <View style={styles.navTitle}>
+          <HapticPressable onPress={()=>router.replace("/(app)")} style={styles.navTitle}>
             <Text style={[styles.navTitleText, { color: theme.text }]}>
               <Text style={[styles.navCampus, { color: theme.primaryText }]}>
                 CAMPUS
               </Text>
               CONNECT
             </Text>
-          </View>
+          </HapticPressable>
         )}
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>

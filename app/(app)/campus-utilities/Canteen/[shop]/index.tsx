@@ -8,8 +8,6 @@ import { db } from "../../../../../firebaseConfig";
 import {
   collection,
   getDocs,
-  addDoc,
-  serverTimestamp,
 } from "firebase/firestore";
 import {
   ScrollView,
@@ -21,7 +19,8 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useCanteen } from "@/components/CanteenContext";
 
 const icon = "pizza";
 const title = "Menu";
@@ -37,24 +36,16 @@ type MenuData = {
   available?: boolean;
 };
 
-type CartItem = {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-};
-
 export default function Page() {
   const [menuData, setMenuData] = useState<MenuData[]>([]);
-  const [cart, setCart] = useState<Record<string, CartItem>>({});
   const [loading, setLoading] = useState(true);
-  const [ordering, setOrdering] = useState(false);
 
   const { theme, isDarkMode } = useTheme();
+  const { cart, addToCart, removeFromCart, updateQuantity, getTotalItems, getTotalPrice } = useCanteen();
+  const router = useRouter();
 
   const { shop } = useLocalSearchParams();
   const shopId = shop as string;
-  const userId = "user_123"; // Replace with actual user ID from context
 
   const fetchMenu = async () => {
     try {
@@ -76,96 +67,31 @@ export default function Page() {
     }
   };
 
-  const addToCart = (item: MenuData) => {
-    setCart((prev) => {
-      const existingItem = prev[item.id];
-      if (existingItem) {
-        return {
-          ...prev,
-          [item.id]: {
-            ...existingItem,
-            quantity: existingItem.quantity + 1,
-          },
-        };
-      } else {
-        return {
-          ...prev,
-          [item.id]: {
-            id: item.id,
-            name: item.name,
-            price: item.price,
-            quantity: 1,
-          },
-        };
-      }
-    });
-  };
-
-  const removeFromCart = (itemId: string) => {
-    setCart((prev) => {
-      const existingItem = prev[itemId];
-      if (existingItem && existingItem.quantity > 1) {
-        return {
-          ...prev,
-          [itemId]: {
-            ...existingItem,
-            quantity: existingItem.quantity - 1,
-          },
-        };
-      } else {
-        const { [itemId]: _, ...rest } = prev;
-        return rest;
-      }
-    });
-  };
-
-  const getTotalItems = () => {
-    return Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
-  };
-
-  const getTotalPrice = () => {
-    return Object.values(cart).reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
+  const handleAddToCart = (item: MenuData) => {
+    const currentQuantity = cart[item.id]?.quantity || 0;
+    addToCart(
+      {
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        shopId: shopId,
+        img: item.image || item.img,
+      },
+      currentQuantity + 1
     );
   };
 
-  const placeOrder = async () => {
-    if (getTotalItems() === 0) return;
+  const handleRemoveFromCart = (itemId: string) => {
+    const currentQuantity = cart[itemId]?.quantity || 0;
+    if (currentQuantity > 1) {
+      updateQuantity(itemId, currentQuantity - 1);
+    } else {
+      removeFromCart(itemId);
+    }
+  };
 
-    Alert.alert(
-      "Place Order",
-      `Total: ₹${getTotalPrice().toFixed(2)}\n\nConfirm your order?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Confirm",
-          onPress: async () => {
-            try {
-              setOrdering(true);
-              const orderItems = Object.values(cart);
-
-              await addDoc(collection(db, "orders"), {
-                userId,
-                shopId,
-                items: orderItems,
-                total: getTotalPrice(),
-                timestamp: serverTimestamp(),
-                status: "pending",
-              });
-
-              Alert.alert("Success", "Your order has been placed!");
-              setCart({});
-            } catch (error) {
-              console.log("Error placing order:", error);
-              Alert.alert("Error", "Failed to place order. Please try again.");
-            } finally {
-              setOrdering(false);
-            }
-          },
-        },
-      ]
-    );
+  const navigateToCart = () => {
+    router.push("/(app)/campus-utilities/Canteen/Cart");
   };
 
   useEffect(() => {
@@ -176,7 +102,7 @@ export default function Page() {
 
   useEffect(() => {
     console.log("Current cart:", cart);
-    }, [cart]);
+  }, [cart]);
 
   const renderMenuItem = (item: MenuData) => {
     const quantity = cart[item.id]?.quantity || 0;
@@ -228,7 +154,7 @@ export default function Page() {
         </View>
 
         {/* Item Image */}
-        <View style={{ elevation: 15 ,shadowColor: "#00eaffff" , shadowOffset: { width: 0, height: 4 } ,  shadowRadius: 5 , }}>
+        <View style={{ elevation: 15, shadowColor: "#00eaffff", shadowOffset: { width: 0, height: 4 }, shadowRadius: 5 }}>
           <Image
             source={
               item.image || item.img
@@ -284,7 +210,7 @@ export default function Page() {
             quantity > 0 ? (
               <>
                 <TouchableOpacity
-                  onPress={() => removeFromCart(item.id)}
+                  onPress={() => handleRemoveFromCart(item.id)}
                   style={{
                     backgroundColor: isDarkMode ? "#334155" : "#F1F5F9",
                     width: 32,
@@ -314,7 +240,7 @@ export default function Page() {
                 </Text>
 
                 <TouchableOpacity
-                  onPress={() => addToCart(item)}
+                  onPress={() => handleAddToCart(item)}
                   style={{
                     backgroundColor: isDarkMode ? "#334155" : "#F1F5F9",
                     width: 32,
@@ -333,7 +259,7 @@ export default function Page() {
               </>
             ) : (
               <TouchableOpacity
-                onPress={() => addToCart(item)}
+                onPress={() => handleAddToCart(item)}
                 style={{
                   backgroundColor: "#33c03881",
                   paddingHorizontal: 20,
@@ -345,7 +271,7 @@ export default function Page() {
                 }}
               >
                 <Ionicons name="add-circle" size={16} color="#005a5bff" />
-                <Text style={{ color: "#005a5bff", fontWeight: "bold" , fontSize: 12 }}>
+                <Text style={{ color: "#005a5bff", fontWeight: "bold", fontSize: 12 }}>
                   Add
                 </Text>
               </TouchableOpacity>
@@ -381,7 +307,7 @@ export default function Page() {
       >
         <ServiceLayout icon={icon} title={title} showTitle={true}>
           <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color="#10B981" />
+            <ActivityIndicator size="large" color="#01a56eff" />
             <Text
               style={[
                 styles.loadingText,
@@ -415,7 +341,7 @@ export default function Page() {
                   { backgroundColor: "#10B98120" },
                 ]}
               >
-                <Ionicons name="restaurant" size={64} color="#10B981" />
+                <Ionicons name="restaurant" size={64} color="#65d4afff" />
               </View>
               <Text
                 style={[
@@ -461,7 +387,7 @@ export default function Page() {
                 >
                   <View style={styles.cartSummary}>
                     <View style={styles.cartIconWrapper}>
-                      <Ionicons name="cart" size={24} color="#10B981" />
+                      <Ionicons name="cart" size={24} color="#04a6fdff" />
                       <View style={styles.cartBadge}>
                         <Text style={styles.cartBadgeText}>
                           {getTotalItems()}
@@ -488,25 +414,15 @@ export default function Page() {
                     </View>
                   </View>
                   <TouchableOpacity
-                    style={[
-                      styles.orderButton,
-                      ordering && styles.orderButtonDisabled,
-                    ]}
-                    onPress={placeOrder}
-                    disabled={ordering}
+                    style={styles.cartButton}
+                    onPress={navigateToCart}
                   >
-                    {ordering ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <>
-                        <Text style={styles.orderButtonText}>Place Order</Text>
-                        <Ionicons
-                          name="arrow-forward"
-                          size={20}
-                          color="#FFFFFF"
-                        />
-                      </>
-                    )}
+                    <Text style={styles.cartButtonText}>View Cart</Text>
+                    <Ionicons
+                      name="arrow-forward"
+                      size={20}
+                      color="#FFFFFF"
+                    />
                   </TouchableOpacity>
                 </View>
               )}
@@ -615,19 +531,16 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "800",
   },
-  orderButton: {
+  cartButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#10B981",
+    backgroundColor: "#0081ddff",
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 14,
     gap: 8,
   },
-  orderButtonDisabled: {
-    opacity: 0.6,
-  },
-  orderButtonText: {
+  cartButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",

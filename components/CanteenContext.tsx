@@ -16,6 +16,7 @@ export interface CanteenCartItem {
   quantity: number;
   shopId: string;      // ensures cart filters per shop if needed
   addedAt: number;
+  img : string
 }
 
 interface CanteenContextType {
@@ -87,6 +88,7 @@ export const CanteenProvider: React.FC<CanteenProviderProps> = ({ children }) =>
         quantity,
         shopId: item.shopId,
         addedAt: Date.now(),
+        img: item.img? item.img : ""
       },
     };
 

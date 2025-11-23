@@ -29,10 +29,10 @@ export default function NightDeliverySection() {
     description: `Order food from ${shop.name}`,
     color: "#2196F3",
     route: `/(app)/campus-utilities/Canteen/${shop.id}`,
-    status: shop.status?.toLowerCase() === "online" ? "Online" : "Offline",
+    status: shop.status.toLowerCase() === "online" ? "Online" : "Offline",
   }));
 
-  const fetchEquipment = async () => {
+  const fetchShops = async () => {
     try {
       setLoading(true);
       const shopRef = collection(db, "shops") as CollectionReference<
@@ -43,6 +43,7 @@ export default function NightDeliverySection() {
         const data = docSnap.data() as Omit<shop, "id">;
         return { id: docSnap.id, ...data };
       });
+      const filterList = list.filter((item)=>item.status === "online")
       setShopData(list);
       console.log("Fetched Shops:", list);
     } catch (error) {
@@ -53,7 +54,7 @@ export default function NightDeliverySection() {
   };
 
   useEffect(() => {
-    fetchEquipment();
+    fetchShops();
   }, []);
 
   return (

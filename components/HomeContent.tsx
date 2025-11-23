@@ -238,6 +238,7 @@ export const HomeContent: React.FC = () => {
           placeholderTextColor={theme.placeholder}
           value={searchQuery}
           onChangeText={setSearchQuery}
+           onFocus={() => router.push("/(app)/Search")}
         />
       </View>
 

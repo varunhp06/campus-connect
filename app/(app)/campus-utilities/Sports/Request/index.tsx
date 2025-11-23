@@ -42,7 +42,11 @@ type RentedRecord = {
   userName?: string;
   timestamp?: { seconds: number; nanoseconds: number };
   items: RentedItem[];
-  status: boolean;
+  status: string | boolean;
+  // Additional fields for return requests
+  rentalId?: string;
+  itemId?: string;
+  quantity?: number;
 };
 
 type TabType = "rent" | "return";
@@ -55,7 +59,9 @@ export default function RequestApprovalPage() {
   const [activeTab, setActiveTab] = useState<TabType>("rent");
   const [rentRequests, setRentRequests] = useState<RentedRecord[]>([]);
   const [returnRequests, setReturnRequests] = useState<RentedRecord[]>([]);
-  const [expandedItems, setExpandedItems] = useState<{[key: string]: boolean}>({});
+  const [expandedItems, setExpandedItems] = useState<{
+    [key: string]: boolean;
+  }>({});
   const [processingId, setProcessingId] = useState<string | null>(null);
   const fadeAnim = useState(new Animated.Value(0))[0];
 
@@ -71,24 +77,29 @@ export default function RequestApprovalPage() {
   const fetchAllRequests = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch rent requests
       const rentRef = collection(db, "rentrequest");
       const rentSnapshot = await getDocs(rentRef);
       const rentList = rentSnapshot.docs
-        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as RentedRecord))
+        .map(
+          (docSnap) => ({ id: docSnap.id, ...docSnap.data() } as RentedRecord)
+        )
         .filter((item) => item.status === false);
       setRentRequests(rentList);
 
       // Fetch return requests
-      const returnRef = collection(db, "returnrequest");
+      const returnRef = collection(db, "returnRequests");
       const returnSnapshot = await getDocs(returnRef);
       const returnList = returnSnapshot.docs
-        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as RentedRecord))
-        .filter((item) => item.status === false);
+        .map(
+          (docSnap) => ({ id: docSnap.id, ...docSnap.data() } as RentedRecord)
+        )
+        .filter((item) => item.status === "pending");
       setReturnRequests(returnList);
+      console.log(returnList);
     } catch (error) {
-      console.log("Error fetching requests:", error);
+      console.error("Error fetching requests:", error);
       Alert.alert("Error", "Failed to fetch requests");
     } finally {
       setLoading(false);
@@ -117,25 +128,36 @@ export default function RequestApprovalPage() {
             try {
               setProcessingId(request.id);
 
+              // Update rent request status
               await updateDoc(doc(db, "rentrequest", request.id), {
-                status: true,
+                status: "approved",
                 approvedAt: Timestamp.now(),
                 approvedBy: currentUser?.uid || "unknown",
               });
 
+              // Add to rented collection
               await addDoc(collection(db, "rented"), {
                 userId: request.userId,
                 userName: request.userName || request.userId,
                 items: request.items,
                 timestamp: serverTimestamp(),
                 approvedBy: currentUser?.uid || "unknown",
-                approvedByName: currentUser?.displayName || currentUser?.email || "Admin",
+                approvedByName:
+                  currentUser?.displayName || currentUser?.email || "Admin",
               });
+
+              // Update equipment inventory (reduce available stock)
+              for (const item of request.items) {
+                const equipmentRef = doc(db, "equipment", item.id);
+                await updateDoc(equipmentRef, {
+                  rented: increment(item.quantity),
+                });
+              }
 
               Alert.alert("Success", "Rent request approved successfully!");
               fetchAllRequests();
             } catch (error) {
-              console.log("Error approving rent request:", error);
+              console.error("Error approving rent request:", error);
               Alert.alert("Error", "Failed to approve request");
             } finally {
               setProcessingId(null);
@@ -146,49 +168,79 @@ export default function RequestApprovalPage() {
     );
   };
 
- const approveReturnRequest = async (request: any) => {
-  const { id: requestId, rentalId, itemId, quantity } = request;
+  const approveReturnRequest = async (request: RentedRecord) => {
+    Alert.alert(
+      "Approve Return Request",
+      `Approve return request for ${request.userName || request.userId}?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Approve",
+          style: "default",
+          onPress: async () => {
+            console.log("sdfg");
+            try {
+              setProcessingId(request.id);
+              console.log("Request", request);
+              const requestId = request.id;
+              const rentalId = request.rentalId;
+              const itemId = request.items[0]?.id;
+              const quantity = request.items[0]?.quantity;
 
-  try {
-    // 1. Update equipment stock (reduce rented)
-    const equipmentRef = doc(db, "equipment", itemId);
-    await updateDoc(equipmentRef, {
-      rented: increment(-quantity),
-    });
+              console.log("sdfg");
+              if (!rentalId || !itemId || !quantity) {
+                throw new Error("Missing required fields in return request");
+              }
 
-    // 2. Get rental record
-    const rentalRef = doc(db, "rented", rentalId);
-    const rentalSnap = await getDoc(rentalRef);
+              // 1. Update equipment stock (reduce rented count)
+              const equipmentRef = doc(db, "equipment", itemId);
+              await updateDoc(equipmentRef, {
+                rented: increment(-quantity),
+              });
+              // 2. Get rental record
+              const rentalRef = doc(db, "rented", rentalId);
+              console.log("sdfg");
+              const rentalSnap = await getDoc(rentalRef);
+              console.log("sdfg");
 
-    if (!rentalSnap.exists()) {
-      console.log("Rental record not found");
-      await deleteDoc(doc(db, "returnRequests", requestId));
-      return;
-    }
+              if (rentalSnap.exists()) {
+                const rentalData = rentalSnap.data();
+                const updatedItems = (rentalData.items || []).filter(
+                  (i: RentedItem) => i.id !== itemId
+                );
 
-    const rentalData = rentalSnap.data();
-    const updatedItems = (rentalData.items || []).filter(
-      (i: any) => i.id !== itemId
+                // 3. Update or delete rental record
+                if (updatedItems.length === 0) {
+                  await deleteDoc(rentalRef);
+                } else {
+                  await updateDoc(rentalRef, {
+                    items: updatedItems,
+                  });
+                }
+              }
+              console.log("mans");
+              await updateDoc(doc(db, "returnRequests", requestId), {
+                status: "approved",
+                approvedAt: Timestamp.now(),
+                approvedBy: currentUser?.uid || "unknown",
+              });
+
+              Alert.alert("Success", "Return request approved successfully!");
+              fetchAllRequests();
+            } catch (error) {
+              console.error("Error approving return request:", error);
+              Alert.alert("Error", "Failed to approve return request");
+            } finally {
+              setProcessingId(null);
+            }
+          },
+        },
+      ]
     );
-
-    // 3. Update rental record or delete if empty
-    if (updatedItems.length === 0) {
-      await deleteDoc(rentalRef);
-    } else {
-      await updateDoc(rentalRef, {
-        items: updatedItems,
-      });
-    }
-
-    // 4. Delete the return request
-    await deleteDoc(doc(db, "returnRequests", requestId));
-
-    Alert.alert("Success", "Return request approved successfully!");
-  } catch (error) {
-    console.log("Error approving request:", error);
-    Alert.alert("Error", "Failed to approve return request.");
-  }
-};
+  };
 
   const rejectRequest = async (request: RentedRecord, type: TabType) => {
     Alert.alert(
@@ -206,9 +258,10 @@ export default function RequestApprovalPage() {
             try {
               setProcessingId(request.id);
 
-              const collectionName = type === "rent" ? "rentrequest" : "returnrequest";
+              const collectionName =
+                type === "rent" ? "rentrequest" : "returnRequests";
               await updateDoc(doc(db, collectionName, request.id), {
-                status: false,
+                status: "rejected",
                 rejectedAt: Timestamp.now(),
                 rejectedBy: currentUser?.uid || "unknown",
               });
@@ -216,7 +269,7 @@ export default function RequestApprovalPage() {
               Alert.alert("Rejected", "Request has been rejected");
               fetchAllRequests();
             } catch (error) {
-              console.log("Error rejecting request:", error);
+              console.error("Error rejecting request:", error);
               Alert.alert("Error", "Failed to reject request");
             } finally {
               setProcessingId(null);
@@ -228,9 +281,9 @@ export default function RequestApprovalPage() {
   };
 
   const toggleExpand = (id: string) => {
-    setExpandedItems(prev => ({
+    setExpandedItems((prev) => ({
       ...prev,
-      [id]: !prev[id]
+      [id]: !prev[id],
     }));
   };
 
@@ -262,7 +315,8 @@ export default function RequestApprovalPage() {
     return `${diffDays}d ago`;
   };
 
-  const getTotalItems = (items: RentedItem[]) => {
+  const getTotalItems = (items?: RentedItem[]) => {
+    if (!items || items.length === 0) return 0;
     return items.reduce((sum, item) => sum + item.quantity, 0);
   };
 
@@ -334,17 +388,24 @@ export default function RequestApprovalPage() {
               <Ionicons
                 name="cube-outline"
                 size={20}
-                color={activeTab === "rent" ? "#228f16ff" : (isDarkMode ? "#64748B" : "#94A3B8")}
+                color={
+                  activeTab === "rent"
+                    ? "#228f16ff"
+                    : isDarkMode
+                    ? "#64748B"
+                    : "#94A3B8"
+                }
               />
               <Text
                 style={[
                   styles.tabText,
                   {
-                    color: activeTab === "rent"
-                      ? "#228f16ff"
-                      : isDarkMode
-                      ? "#64748B"
-                      : "#94A3B8",
+                    color:
+                      activeTab === "rent"
+                        ? "#228f16ff"
+                        : isDarkMode
+                        ? "#64748B"
+                        : "#94A3B8",
                   },
                   activeTab === "rent" && styles.activeTabText,
                 ]}
@@ -369,17 +430,24 @@ export default function RequestApprovalPage() {
               <Ionicons
                 name="return-down-back-outline"
                 size={20}
-                color={activeTab === "return" ? "#228f16ff" : (isDarkMode ? "#64748B" : "#94A3B8")}
+                color={
+                  activeTab === "return"
+                    ? "#228f16ff"
+                    : isDarkMode
+                    ? "#64748B"
+                    : "#94A3B8"
+                }
               />
               <Text
                 style={[
                   styles.tabText,
                   {
-                    color: activeTab === "return"
-                      ? "#228f16ff"
-                      : isDarkMode
-                      ? "#64748B"
-                      : "#94A3B8",
+                    color:
+                      activeTab === "return"
+                        ? "#228f16ff"
+                        : isDarkMode
+                        ? "#64748B"
+                        : "#94A3B8",
                   },
                   activeTab === "return" && styles.activeTabText,
                 ]}
@@ -417,7 +485,9 @@ export default function RequestApprovalPage() {
               ]}
             >
               <View style={styles.statsContent}>
-                <View style={[styles.statsIcon, { backgroundColor: "#FEF3C7" }]}>
+                <View
+                  style={[styles.statsIcon, { backgroundColor: "#FEF3C7" }]}
+                >
                   <Ionicons name="time-outline" size={28} color="#F59E0B" />
                 </View>
                 <View style={styles.statsInfo}>
@@ -454,7 +524,7 @@ export default function RequestApprovalPage() {
 
             {/* Requests List */}
             <View style={styles.requestsList}>
-              {currentRequests.map((request, index) => {
+              {currentRequests.map((request) => {
                 const isExpanded = expandedItems[request.id];
                 const isProcessing = processingId === request.id;
                 const totalItems = getTotalItems(request.items);
@@ -482,13 +552,20 @@ export default function RequestApprovalPage() {
                         <View
                           style={[
                             styles.userAvatar,
-                            { backgroundColor: activeTab === "rent" ? "#DBEAFE" : "#FEE2E2" },
+                            {
+                              backgroundColor:
+                                activeTab === "rent" ? "#DBEAFE" : "#FEE2E2",
+                            },
                           ]}
                         >
-                          <Ionicons 
-                            name={activeTab === "rent" ? "arrow-forward" : "arrow-back"} 
-                            size={24} 
-                            color={activeTab === "rent" ? "#2563EB" : "#DC2626"} 
+                          <Ionicons
+                            name={
+                              activeTab === "rent"
+                                ? "arrow-forward"
+                                : "arrow-back"
+                            }
+                            size={24}
+                            color={activeTab === "rent" ? "#2563EB" : "#DC2626"}
                           />
                         </View>
                         <View style={styles.requestInfo}>
@@ -529,7 +606,11 @@ export default function RequestApprovalPage() {
                         <View
                           style={[
                             styles.itemsBadge,
-                            { backgroundColor: isDarkMode ? "#0F172A" : "#F8FAFC" },
+                            {
+                              backgroundColor: isDarkMode
+                                ? "#0F172A"
+                                : "#F8FAFC",
+                            },
                           ]}
                         >
                           <Ionicons
@@ -555,79 +636,107 @@ export default function RequestApprovalPage() {
                     </TouchableOpacity>
 
                     {/* Expanded Items List */}
-                    {isExpanded && (
-                      <View
-                        style={[
-                          styles.itemsContainer,
-                          {
-                            backgroundColor: isDarkMode ? "#0F172A" : "#F8FAFC",
-                            borderTopColor: isDarkMode ? "#334155" : "#E2E8F0",
-                          },
-                        ]}
-                      >
-                        <Text
+                    {isExpanded &&
+                      request.items &&
+                      request.items.length > 0 && (
+                        <View
                           style={[
-                            styles.itemsTitle,
-                            { color: isDarkMode ? "#94A3B8" : "#64748B" },
+                            styles.itemsContainer,
+                            {
+                              backgroundColor: isDarkMode
+                                ? "#0F172A"
+                                : "#F8FAFC",
+                              borderTopColor: isDarkMode
+                                ? "#334155"
+                                : "#E2E8F0",
+                            },
                           ]}
                         >
-                          {activeTab === "rent" ? "Requested Items" : "Items to Return"}
-                        </Text>
-                        {request.items.map((item, idx) => (
-                          <View key={idx} style={styles.itemRow}>
-                            <View style={styles.itemLeft}>
-                              <View
-                                style={[
-                                  styles.itemIcon,
-                                  { backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF" },
-                                ]}
-                              >
-                                <Ionicons
-                                  name="cube"
-                                  size={16}
-                                  color="#228f16ff"
-                                />
-                              </View>
-                              <Text
-                                style={[
-                                  styles.itemName,
-                                  { color: isDarkMode ? "#F1F5F9" : "#1E293B" },
-                                ]}
-                              >
-                                {item.name}
-                              </Text>
-                            </View>
-                            <View
-                              style={[
-                                styles.quantityBadge,
-                                { backgroundColor: "#FEF3C7" },
-                              ]}
-                            >
-                              <Text style={[styles.quantityText, { color: "#B45309" }]}>
-                                ×{item.quantity}
-                              </Text>
-                            </View>
-                          </View>
-                        ))}
-
-                        {/* Request Date */}
-                        <View style={styles.dateContainer}>
-                          <Ionicons
-                            name="calendar-outline"
-                            size={14}
-                            color={isDarkMode ? "#64748B" : "#94A3B8"}
-                          />
                           <Text
                             style={[
-                              styles.dateText,
-                              { color: isDarkMode ? "#64748B" : "#94A3B8" },
+                              styles.itemsTitle,
+                              { color: isDarkMode ? "#94A3B8" : "#64748B" },
                             ]}
                           >
-                            Requested on {formatDate(request.timestamp)}
+                            {activeTab === "rent"
+                              ? "Requested Items"
+                              : "Items to Return"}
                           </Text>
+                          {request.items.map((item, idx) => (
+                            <View key={idx} style={styles.itemRow}>
+                              <View style={styles.itemLeft}>
+                                <View
+                                  style={[
+                                    styles.itemIcon,
+                                    {
+                                      backgroundColor: isDarkMode
+                                        ? "#1E293B"
+                                        : "#FFFFFF",
+                                    },
+                                  ]}
+                                >
+                                  <Ionicons
+                                    name="cube"
+                                    size={16}
+                                    color="#228f16ff"
+                                  />
+                                </View>
+                                <Text
+                                  style={[
+                                    styles.itemName,
+                                    {
+                                      color: isDarkMode ? "#F1F5F9" : "#1E293B",
+                                    },
+                                  ]}
+                                >
+                                  {item.name}
+                                </Text>
+                              </View>
+                              <View
+                                style={[
+                                  styles.quantityBadge,
+                                  { backgroundColor: "#FEF3C7" },
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.quantityText,
+                                    { color: "#B45309" },
+                                  ]}
+                                >
+                                  ×{item.quantity}
+                                </Text>
+                              </View>
+                            </View>
+                          ))}
+
+                          {/* Request Date */}
+                          <View
+                            style={[
+                              styles.dateContainer,
+                              {
+                                borderTopColor: isDarkMode
+                                  ? "#334155"
+                                  : "#E2E8F0",
+                              },
+                            ]}
+                          >
+                            <Ionicons
+                              name="calendar-outline"
+                              size={14}
+                              color={isDarkMode ? "#64748B" : "#94A3B8"}
+                            />
+                            <Text
+                              style={[
+                                styles.dateText,
+                                { color: isDarkMode ? "#64748B" : "#94A3B8" },
+                              ]}
+                            >
+                              Requested on {formatDate(request.timestamp)}
+                            </Text>
+                          </View>
                         </View>
-                      </View>
-                    )}
+                      )}
 
                     {/* Action Buttons */}
                     <View style={styles.actionsContainer}>
@@ -641,7 +750,11 @@ export default function RequestApprovalPage() {
                         disabled={isProcessing}
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="close-circle" size={20} color="#DC2626" />
+                        <Ionicons
+                          name="close-circle"
+                          size={20}
+                          color="#DC2626"
+                        />
                         <Text style={[styles.rejectButtonText]}>Reject</Text>
                       </TouchableOpacity>
 
@@ -651,9 +764,9 @@ export default function RequestApprovalPage() {
                           styles.approveButton,
                           isProcessing && styles.disabledButton,
                         ]}
-                        onPress={() => 
-                          activeTab === "rent" 
-                            ? approveRentRequest(request) 
+                        onPress={() =>
+                          activeTab === "rent"
+                            ? approveRentRequest(request)
                             : approveReturnRequest(request)
                         }
                         disabled={isProcessing}
@@ -662,7 +775,9 @@ export default function RequestApprovalPage() {
                         {isProcessing ? (
                           <>
                             <ActivityIndicator size="small" color="#FFFFFF" />
-                            <Text style={styles.approveButtonText}>Processing...</Text>
+                            <Text style={styles.approveButtonText}>
+                              Processing...
+                            </Text>
                           </>
                         ) : (
                           <>
@@ -671,7 +786,9 @@ export default function RequestApprovalPage() {
                               size={20}
                               color="#FFFFFF"
                             />
-                            <Text style={styles.approveButtonText}>Approve</Text>
+                            <Text style={styles.approveButtonText}>
+                              Approve
+                            </Text>
                           </>
                         )}
                       </TouchableOpacity>
@@ -716,7 +833,11 @@ export default function RequestApprovalPage() {
                   style={styles.refreshEmptyButton}
                   onPress={onRefresh}
                 >
-                  <Ionicons name="refresh-outline" size={20} color="#228f16ff" />
+                  <Ionicons
+                    name="refresh-outline"
+                    size={20}
+                    color="#228f16ff"
+                  />
                   <Text style={styles.refreshEmptyText}>Refresh</Text>
                 </TouchableOpacity>
               </View>
@@ -946,7 +1067,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
   },
   dateText: {
     fontSize: 12,

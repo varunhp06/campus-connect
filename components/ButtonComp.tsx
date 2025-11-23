@@ -61,15 +61,15 @@ function ButtonComp({ utility, theme, router }: ButtonProps) {
       style={({ pressed }) => [
         styles.utilityCard,
         {
-          backgroundColor: theme.inputBackground,
-          borderColor: theme.inputBorder,
+          backgroundColor:  theme.inputBackground,
+          borderColor:  theme.inputBorder,
           opacity: pressed ? 0.7 : 1,
         },
       ]}
       onPress={handlePress}
     >
       <View
-        style={[styles.utilityBorder, { backgroundColor: utility.color }]}
+        style={[styles.utilityBorder, { backgroundColor: utility.status?.toLowerCase() === "offline" ? "#0073ff4e" :utility.color }]}
       />
       {utility.icon && (
         <Image
@@ -79,11 +79,11 @@ function ButtonComp({ utility, theme, router }: ButtonProps) {
         />
       )}
       <View style={[styles.utilityContent, { marginLeft: utility.icon ? 0 : 12, marginRight: utility.icon ? 0 : 12 }]}>
-        <Text style={[styles.utilityTitle, { color: utility.color }]}>
+        <Text style={[styles.utilityTitle, { color: utility.status?.toLowerCase() === "offline" ? "#b5d3e8ff" :utility.color }]}>
           {utility.title}
         </Text>
-        <Text style={[styles.utilityDescription, { color: theme.placeholder }]}>
-          {utility.description}
+        <Text style={[styles.utilityDescription, {  color: utility.status?.toLowerCase() === "offline" ? "#878787ff" : theme.placeholder }]}>
+          {utility.status?.toLowerCase() === "offline" ? "Not Accepting Orders" : utility.description}
         </Text>
       </View>
     </HapticPressable>
