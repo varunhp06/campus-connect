@@ -15,6 +15,7 @@ import * as Print from 'expo-print';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { fetchActivities, ActivityItem } from './data/activities';
+import { ServiceLayout } from './ServiceLayout';
 
 export const AllEventsContent: React.FC = () => {
   const { theme } = useTheme();
@@ -210,8 +211,13 @@ export const AllEventsContent: React.FC = () => {
   }
 
   return (
+    <ServiceLayout
+          icon={"list"}
+          title={"Events List"}
+          showTitle={true}
+          showBottomImage={false}
+      >
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Header with PDF Button */}
       <View style={styles.headerSection}>
         <HapticPressable
           style={({ pressed }) => [
@@ -224,8 +230,6 @@ export const AllEventsContent: React.FC = () => {
           <Text style={styles.pdfButtonText}>Download PDF</Text>
         </HapticPressable>
       </View>
-
-      {/* Toggle */}
       <View style={styles.toggleContainer}>
         <View
           style={[
@@ -274,8 +278,6 @@ export const AllEventsContent: React.FC = () => {
           </HapticPressable>
         </View>
       </View>
-
-      {/* Tabs */}
       <View
         style={[
           styles.tabContainer,
@@ -309,8 +311,6 @@ export const AllEventsContent: React.FC = () => {
           </HapticPressable>
         ))}
       </View>
-
-      {/* Events List */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -385,6 +385,7 @@ export const AllEventsContent: React.FC = () => {
         )}
       </ScrollView>
     </View>
+    </ServiceLayout>
   );
 };
 

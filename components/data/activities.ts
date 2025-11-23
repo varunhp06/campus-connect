@@ -40,10 +40,10 @@ export async function fetchActivities(): Promise<ActivityItem[]> {
       const monthB = months.indexOf(b.month);
       
       if (monthA !== monthB) {
-        return monthB - monthA;
+        return monthA - monthB;
       }
       
-      return parseInt(b.date) - parseInt(a.date);
+      return parseInt(a.date) - parseInt(b.date);
     });
     
     return activities;
