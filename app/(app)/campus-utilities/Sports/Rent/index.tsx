@@ -97,10 +97,11 @@ export default function Page() {
           rented: increment(quantity),
         });
       }
-      await addDoc(collection(db, "rented"), {
+      await addDoc(collection(db, "rentrequest"), {
         userId,
         items: rentedItems,
         timestamp: serverTimestamp(),
+        status: false
       });
       console.log("All equipment rented successfully!");
     } catch (error) {

@@ -9,16 +9,17 @@ import {
   updateDoc,
   increment,
   deleteDoc,
+  addDoc,
 } from "firebase/firestore";
-import { 
-  ScrollView, 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import {
+  ScrollView,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Animated
+  Animated,
 } from "react-native";
 import { ThemedLayout } from "@/components/ThemedLayout";
 import { ServiceLayout } from "@/components/ServiceLayout";
@@ -45,7 +46,7 @@ export default function ReturnPage() {
   const fadeAnim = useState(new Animated.Value(0))[0];
 
   const { theme, isDarkMode } = useTheme();
-  const userId = "user_123"; 
+  const userId = "user_123";
 
   const fetchRentedEquipment = async () => {
     try {
@@ -54,12 +55,13 @@ export default function ReturnPage() {
       const snapshot = await getDocs(rentedRef);
 
       const list = snapshot.docs
-        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as RentedRecord))
+        .map(
+          (docSnap) => ({ id: docSnap.id, ...docSnap.data() } as RentedRecord)
+        )
         .filter((item) => item.userId === userId);
 
       setRentedRecords(list);
-      
-      // Animate content in
+
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 600,
@@ -72,36 +74,78 @@ export default function ReturnPage() {
     }
   };
 
+  // const returnAllEquipment = async () => {
+  //   Alert.alert(
+  //     "Return All Equipment",
+  //     "Are you sure you want to return all rented equipment?",
+  //     [
+  //       { text: "Cancel", style: "cancel" },
+  //       {
+  //         text: "Return All",
+  //         style: "destructive",
+  //         onPress: async () => {
+  //           try {
+  //             setReturning(true);
+  //             for (const record of rentedRecords) {
+  //               const items = record.items || [];
+
+  //               for (const item of items) {
+  //                 const equipmentRef = doc(db, "equipment", item.id);
+  //                 await updateDoc(equipmentRef, {
+  //                   rented: increment(-item.quantity),
+  //                 });
+  //               }
+
+  //               await deleteDoc(doc(db, "rented", record.id));
+  //             }
+
+  //             setRentedRecords([]);
+  //             Alert.alert("Success", "All equipment returned successfully!");
+  //           } catch (error) {
+  //             console.log("Error returning equipment:", error);
+  //             Alert.alert(
+  //               "Error",
+  //               "Failed to return equipment. Please try again."
+  //             );
+  //           } finally {
+  //             setReturning(false);
+  //           }
+  //         },
+  //       },
+  //     ]
+  //   );
+  // };
+
   const returnAllEquipment = async () => {
     Alert.alert(
-      "Return All Equipment",
-      "Are you sure you want to return all rented equipment?",
+      "Request Return",
+      "Are you sure you want to request a return for all rented equipment?",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Return All",
+          text: "Request Return",
           style: "destructive",
           onPress: async () => {
             try {
               setReturning(true);
+
               for (const record of rentedRecords) {
-                const items = record.items || [];
-
-                for (const item of items) {
-                  const equipmentRef = doc(db, "equipment", item.id);
-                  await updateDoc(equipmentRef, {
-                    rented: increment(-item.quantity),
-                  });
-                }
-
-                await deleteDoc(doc(db, "rented", record.id));
+                await addDoc(collection(db, "returnRequests"), {
+                  userId: record.userId,
+                  rentalId: record.id,
+                  items: record.items,
+                  timestamp: new Date(),
+                  status: "pending", 
+                });
               }
 
-              setRentedRecords([]);
-              Alert.alert("Success", "All equipment returned successfully!");
+              Alert.alert("Success", "Return request submitted successfully!");
             } catch (error) {
-              console.log("Error returning equipment:", error);
-              Alert.alert("Error", "Failed to return equipment. Please try again.");
+              console.log("Error creating return request:", error);
+              Alert.alert(
+                "Error",
+                "Failed to request return. Please try again."
+              );
             } finally {
               setReturning(false);
             }
@@ -111,56 +155,105 @@ export default function ReturnPage() {
     );
   };
 
+  // const returnSingleItem = async (
+  //   recordId: string,
+  //   itemId: string,
+  //   quantity: number,
+  //   itemName: string
+  // ) => {
+  //   Alert.alert(
+  //     "Return Item",
+  //     `Return ${quantity} ${itemName}${quantity > 1 ? "s" : ""}?`,
+  //     [
+  //       { text: "Cancel", style: "cancel" },
+  //       {
+  //         text: "Return",
+  //         onPress: async () => {
+  //           try {
+  //             const equipmentRef = doc(db, "equipment", itemId);
+  //             await updateDoc(equipmentRef, {
+  //               rented: increment(-quantity),
+  //             });
+
+  //             // Find the record and update items array
+  //             const record = rentedRecords.find((r) => r.id === recordId);
+  //             if (!record) return;
+
+  //             const updatedItems = record.items.filter(
+  //               (item) => item.id !== itemId
+  //             );
+
+  //             if (updatedItems.length === 0) {
+  //               // Delete the entire record if no items left
+  //               await deleteDoc(doc(db, "rented", recordId));
+  //               setRentedRecords((prev) =>
+  //                 prev.filter((r) => r.id !== recordId)
+  //               );
+  //             } else {
+  //               // Update the record with remaining items
+  //               await updateDoc(doc(db, "rented", recordId), {
+  //                 items: updatedItems,
+  //               });
+  //               setRentedRecords((prev) =>
+  //                 prev.map((r) =>
+  //                   r.id === recordId ? { ...r, items: updatedItems } : r
+  //                 )
+  //               );
+  //             }
+
+  //             Alert.alert("Success", `${itemName} returned successfully!`);
+  //           } catch (error) {
+  //             console.log("Error returning item:", error);
+  //             Alert.alert("Error", "Failed to return item.");
+  //           }
+  //         },
+  //       },
+  //     ]
+  //   );
+  // };
+
   const returnSingleItem = async (
-    recordId: string, 
-    itemId: string, 
-    quantity: number, 
-    itemName: string
-  ) => {
-    Alert.alert(
-      "Return Item",
-      `Return ${quantity} ${itemName}${quantity > 1 ? 's' : ''}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Return",
-          onPress: async () => {
-            try {
-              const equipmentRef = doc(db, "equipment", itemId);
-              await updateDoc(equipmentRef, {
-                rented: increment(-quantity),
-              });
+  recordId: string,
+  itemId: string,
+  quantity: number,
+  itemName: string
+) => {
+  Alert.alert(
+    "Request Return",
+    `Request return for ${quantity} ${itemName}${quantity > 1 ? "s" : ""}?`,
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Submit Request",
+        onPress: async () => {
+          try {
+            const record = rentedRecords.find((r) => r.id === recordId);
+            if (!record) return;
 
-              // Find the record and update items array
-              const record = rentedRecords.find(r => r.id === recordId);
-              if (!record) return;
+            await addDoc(collection(db, "returnRequests"), {
+              userId: record.userId,
+              rentalId: recordId,
+              itemId,
+              itemName,
+              quantity,
+              timestamp: new Date(),
+              status: "pending", // pending | approved | rejected
+            });
 
-              const updatedItems = record.items.filter(item => item.id !== itemId);
-
-              if (updatedItems.length === 0) {
-                // Delete the entire record if no items left
-                await deleteDoc(doc(db, "rented", recordId));
-                setRentedRecords(prev => prev.filter(r => r.id !== recordId));
-              } else {
-                // Update the record with remaining items
-                await updateDoc(doc(db, "rented", recordId), { 
-                  items: updatedItems 
-                });
-                setRentedRecords(prev =>
-                  prev.map(r => r.id === recordId ? { ...r, items: updatedItems } : r)
-                );
-              }
-
-              Alert.alert("Success", `${itemName} returned successfully!`);
-            } catch (error) {
-              console.log("Error returning item:", error);
-              Alert.alert("Error", "Failed to return item.");
-            }
-          },
+            Alert.alert(
+              "Success",
+              `Return request submitted for ${itemName}.`
+            );
+          } catch (error) {
+            console.log("Error requesting return:", error);
+            Alert.alert("Error", "Failed to request return. Please try again.");
+          }
         },
-      ]
-    );
-  };
+      },
+    ]
+  );
+};
+
 
   useEffect(() => {
     fetchRentedEquipment();
@@ -168,7 +261,10 @@ export default function ReturnPage() {
 
   const getTotalItems = () => {
     return rentedRecords.reduce((total, record) => {
-      return total + (record.items || []).reduce((sum, item) => sum + item.quantity, 0);
+      return (
+        total +
+        (record.items || []).reduce((sum, item) => sum + item.quantity, 0)
+      );
     }, 0);
   };
 
@@ -178,39 +274,61 @@ export default function ReturnPage() {
 
   const renderRentedCard = (record: RentedRecord, index: number) => {
     const cartItems = record.items || [];
-    const totalItemsInRecord = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+    const totalItemsInRecord = cartItems.reduce(
+      (sum, item) => sum + item.quantity,
+      0
+    );
 
     return (
       <Animated.View
         key={record.id}
         style={[
           styles.rentedCard,
-          { 
+          {
             backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
             opacity: fadeAnim,
-            transform: [{
-              translateY: fadeAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [50, 0],
-              }),
-            }],
+            transform: [
+              {
+                translateY: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [50, 0],
+                }),
+              },
+            ],
           },
         ]}
       >
         {/* Card Header with Gradient */}
-        <View style={[styles.cardHeader, { backgroundColor: isDarkMode ? "#0F172A" : "#F8FAFC" }]}>
+        <View
+          style={[
+            styles.cardHeader,
+            { backgroundColor: isDarkMode ? "#0F172A" : "#F8FAFC" },
+          ]}
+        >
           <View style={styles.headerLeft}>
-            <View style={[styles.dateIcon, { backgroundColor: '#3aaa3cff' }]}>
+            <View style={[styles.dateIcon, { backgroundColor: "#3aaa3cff" }]}>
               <Ionicons name="calendar" size={16} color="#FFFFFF" />
             </View>
             <View>
-              <Text style={[styles.rentedLabel, { color: isDarkMode ? "#94A3B8" : "#64748B" }]}>
+              <Text
+                style={[
+                  styles.rentedLabel,
+                  { color: isDarkMode ? "#94A3B8" : "#64748B" },
+                ]}
+              >
                 RENTED ON
               </Text>
-              <Text style={[styles.rentedDate, { color: isDarkMode ? "#F1F5F9" : "#0F172A" }]}>
+              <Text
+                style={[
+                  styles.rentedDate,
+                  { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
+                ]}
+              >
                 {record.timestamp?.seconds
-                  ? new Date(record.timestamp.seconds * 1000).toLocaleDateString("en-US", {
-                      weekday: 'short',
+                  ? new Date(
+                      record.timestamp.seconds * 1000
+                    ).toLocaleDateString("en-US", {
+                      weekday: "short",
                       month: "short",
                       day: "numeric",
                       year: "numeric",
@@ -219,11 +337,11 @@ export default function ReturnPage() {
               </Text>
             </View>
           </View>
-          <View style={[styles.itemCountBadge, { backgroundColor: '#3aaa3cff' }]}>
+          <View
+            style={[styles.itemCountBadge, { backgroundColor: "#3aaa3cff" }]}
+          >
             <Ionicons name="cube" size={14} color="#ffffffff" />
-            <Text style={styles.itemCountText}>
-              {totalItemsInRecord}
-            </Text>
+            <Text style={styles.itemCountText}>{totalItemsInRecord}</Text>
           </View>
         </View>
 
@@ -239,21 +357,41 @@ export default function ReturnPage() {
               ]}
             >
               <View style={styles.itemInfo}>
-                <View style={[styles.itemIcon, { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" }]}>
+                <View
+                  style={[
+                    styles.itemIcon,
+                    { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" },
+                  ]}
+                >
                   <Ionicons name="cube-outline" size={18} color="#038f3bff" />
                 </View>
                 <View style={styles.itemDetails}>
-                  <Text style={[styles.itemName, { color: isDarkMode ? "#F1F5F9" : "#0F172A" }]}>
+                  <Text
+                    style={[
+                      styles.itemName,
+                      { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
+                    ]}
+                  >
                     {item.name}
                   </Text>
-                  <Text style={[styles.itemQuantity, { color: isDarkMode ? "#94A3B8" : "#64748B" }]}>
-                    {item.quantity} item{item.quantity !== 1 ? 's' : ''}
+                  <Text
+                    style={[
+                      styles.itemQuantity,
+                      { color: isDarkMode ? "#94A3B8" : "#64748B" },
+                    ]}
+                  >
+                    {item.quantity} item{item.quantity !== 1 ? "s" : ""}
                   </Text>
                 </View>
               </View>
               <TouchableOpacity
-                style={[styles.returnSingleButton, { backgroundColor: '#10B98120' }]}
-                onPress={() => returnSingleItem(record.id, item.id, item.quantity, item.name)}
+                style={[
+                  styles.returnSingleButton,
+                  { backgroundColor: "#10B98120" },
+                ]}
+                onPress={() =>
+                  returnSingleItem(record.id, item.id, item.quantity, item.name)
+                }
               >
                 <Ionicons name="arrow-up-circle" size={22} color="#10B981" />
                 <Text style={styles.returnSingleText}>Return</Text>
@@ -263,9 +401,19 @@ export default function ReturnPage() {
         </View>
 
         {/* Card Footer */}
-        <View style={[styles.cardFooter, { borderTopColor: isDarkMode ? "#334155" : "#F1F5F9" }]}>
-          <Text style={[styles.footerText, { color: isDarkMode ? "#94A3B8" : "#64748B" }]}>
-            {cartItems.length} item type{cartItems.length !== 1 ? 's' : ''}
+        <View
+          style={[
+            styles.cardFooter,
+            { borderTopColor: isDarkMode ? "#334155" : "#F1F5F9" },
+          ]}
+        >
+          <Text
+            style={[
+              styles.footerText,
+              { color: isDarkMode ? "#94A3B8" : "#64748B" },
+            ]}
+          >
+            {cartItems.length} item type{cartItems.length !== 1 ? "s" : ""}
           </Text>
         </View>
       </Animated.View>
@@ -276,14 +424,28 @@ export default function ReturnPage() {
     return (
       <ThemedLayout
         showNavbar={true}
-        navbarConfig={{ showHamburger: true, showTitle: true, showThemeToggle: true }}
+        navbarConfig={{
+          showHamburger: true,
+          showTitle: true,
+          showThemeToggle: true,
+        }}
       >
         <ServiceLayout icon="return-down-back" title={title} showTitle={true}>
           <View style={styles.centerContainer}>
-            <View style={[styles.loadingIcon, { backgroundColor: isDarkMode ? "#1E293B" : "#F1F5F9" }]}>
+            <View
+              style={[
+                styles.loadingIcon,
+                { backgroundColor: isDarkMode ? "#1E293B" : "#F1F5F9" },
+              ]}
+            >
               <ActivityIndicator size="large" color="#228f16ff" />
             </View>
-            <Text style={[styles.loadingText, { color: isDarkMode ? "#94A3B8" : "#64748B" }]}>
+            <Text
+              style={[
+                styles.loadingText,
+                { color: isDarkMode ? "#94A3B8" : "#64748B" },
+              ]}
+            >
               Loading your rentals...
             </Text>
           </View>
@@ -295,24 +457,42 @@ export default function ReturnPage() {
   return (
     <ThemedLayout
       showNavbar={true}
-      navbarConfig={{ showHamburger: true, showTitle: true, showThemeToggle: true }}
+      navbarConfig={{
+        showHamburger: true,
+        showTitle: true,
+        showThemeToggle: true,
+      }}
     >
       <ServiceLayout icon="return-down-back" title={title} showTitle={true}>
         <View style={styles.container}>
           {rentedRecords.length === 0 ? (
-            <Animated.View 
-              style={[
-                styles.emptyState,
-                { opacity: fadeAnim }
-              ]}
-            >
-              <View style={[styles.emptyIconContainer, { backgroundColor: '#10B98120' }]}>
-                <Ionicons name="checkmark-done-circle" size={64} color="#10B981" />
+            <Animated.View style={[styles.emptyState, { opacity: fadeAnim }]}>
+              <View
+                style={[
+                  styles.emptyIconContainer,
+                  { backgroundColor: "#10B98120" },
+                ]}
+              >
+                <Ionicons
+                  name="checkmark-done-circle"
+                  size={64}
+                  color="#10B981"
+                />
               </View>
-              <Text style={[styles.emptyTitle, { color: isDarkMode ? "#F1F5F9" : "#0F172A" }]}>
+              <Text
+                style={[
+                  styles.emptyTitle,
+                  { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
+                ]}
+              >
                 All Caught Up!
               </Text>
-              <Text style={[styles.emptySubtitle, { color: isDarkMode ? "#64748B" : "#94A3B8" }]}>
+              <Text
+                style={[
+                  styles.emptySubtitle,
+                  { color: isDarkMode ? "#64748B" : "#94A3B8" },
+                ]}
+              >
                 You don't have any rented equipment at the moment.
               </Text>
               <TouchableOpacity style={styles.browseButton}>
@@ -323,38 +503,66 @@ export default function ReturnPage() {
           ) : (
             <>
               {/* Enhanced Summary Card */}
-              <Animated.View 
+              <Animated.View
                 style={[
                   styles.summaryCard,
-                  { 
+                  {
                     backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
                     opacity: fadeAnim,
-                    transform: [{
-                      translateY: fadeAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [30, 0],
-                      }),
-                    }],
-                  }
+                    transform: [
+                      {
+                        translateY: fadeAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [30, 0],
+                        }),
+                      },
+                    ],
+                  },
                 ]}
               >
                 <View style={styles.summaryContent}>
-                  <View style={[styles.summaryIconWrapper, { backgroundColor: '#5cf65c20' }]}>
+                  <View
+                    style={[
+                      styles.summaryIconWrapper,
+                      { backgroundColor: "#5cf65c20" },
+                    ]}
+                  >
                     <Ionicons name="bag-check" size={28} color="#00af0cff" />
                   </View>
                   <View style={styles.summaryInfo}>
-                    <Text style={[styles.summaryLabel, { color: isDarkMode ? "#94A3B8" : "#1c551dff" }]}>
+                    <Text
+                      style={[
+                        styles.summaryLabel,
+                        { color: isDarkMode ? "#94A3B8" : "#1c551dff" },
+                      ]}
+                    >
                       ACTIVE RENTALS
                     </Text>
-                    <Text style={[styles.summaryValue, { color: isDarkMode ? "#F1F5F9" : "#0f2a14ff" }]}>
+                    <Text
+                      style={[
+                        styles.summaryValue,
+                        { color: isDarkMode ? "#F1F5F9" : "#0f2a14ff" },
+                      ]}
+                    >
                       {getTotalItems()} Item{getTotalItems() !== 1 ? "s" : ""}
                     </Text>
-                    <Text style={[styles.summarySubtext, { color: isDarkMode ? "#64748B" : "#94A3B8" }]}>
-                      Across {getTotalRecords()} rental{getTotalRecords() !== 1 ? 's' : ''}
+                    <Text
+                      style={[
+                        styles.summarySubtext,
+                        { color: isDarkMode ? "#64748B" : "#94A3B8" },
+                      ]}
+                    >
+                      Across {getTotalRecords()} rental
+                      {getTotalRecords() !== 1 ? "s" : ""}
                     </Text>
                   </View>
                 </View>
-                <View style={[styles.summaryDecoration, { backgroundColor: '#69f65cff' }]} />
+                <View
+                  style={[
+                    styles.summaryDecoration,
+                    { backgroundColor: "#69f65cff" },
+                  ]}
+                />
               </Animated.View>
 
               {/* Rented Items List */}
@@ -367,18 +575,21 @@ export default function ReturnPage() {
               </ScrollView>
 
               {/* Enhanced Return All Button */}
-              <Animated.View 
+              <Animated.View
                 style={[
-                  styles.buttonContainer, 
-                  { 
+                  styles.buttonContainer,
+                  {
                     backgroundColor: isDarkMode ? "#0F172A" : "#FFFFFF",
                     opacity: fadeAnim,
-                  }
+                  },
                 ]}
               >
                 <View style={styles.buttonBackground}>
                   <TouchableOpacity
-                    style={[styles.returnAllButton, returning && styles.buttonDisabled]}
+                    style={[
+                      styles.returnAllButton,
+                      returning && styles.buttonDisabled,
+                    ]}
                     onPress={returnAllEquipment}
                     disabled={returning}
                   >
@@ -389,9 +600,13 @@ export default function ReturnPage() {
                         <View style={styles.buttonIcon}>
                           <Ionicons name="refresh" size={20} color="#FFFFFF" />
                         </View>
-                        <Text style={styles.returnAllButtonText}>Return All Equipment</Text>
+                        <Text style={styles.returnAllButtonText}>
+                          Return All Equipment
+                        </Text>
                         <View style={styles.buttonBadge}>
-                          <Text style={styles.buttonBadgeText}>{getTotalItems()}</Text>
+                          <Text style={styles.buttonBadgeText}>
+                            {getTotalItems()}
+                          </Text>
                         </View>
                       </>
                     )}
