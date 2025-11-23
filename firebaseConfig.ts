@@ -1,6 +1,8 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+// @ts-ignore - getReactNativePersistence exists in RN bundle but missing from TS definitions
+import { initializeAuth, getReactNativePersistence, getAuth, Auth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
 const firebaseConfig = {
@@ -13,8 +15,19 @@ const firebaseConfig = {
   measurementId: Constants.expoConfig?.extra?.firebaseMeasurementId
 };
 
-const app = initializeApp(firebaseConfig)
-const auth = getAuth(app)
+let app;
+let auth: Auth;
+
+if (getApps().length === 0) {
+  app = initializeApp(firebaseConfig);
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage)
+  });
+} else {
+  app = getApp();
+  auth = getAuth(app);
+}
+
 const db = getFirestore(app);
 
-export { auth  , db};
+export { auth, db };

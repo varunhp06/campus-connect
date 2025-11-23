@@ -57,8 +57,6 @@ export const LoginForm: React.FC = () => {
         password
       );
       console.log("User logged in successfully:", userCredential.user.uid);
-      await AsyncStorage.setItem("lastLoginTime", Date.now().toString());// just for production purpose
-      router.replace("/(app)/HomeScreen");
     } catch (error: any) {
       let errorMessage = "An error occurred during login";
       switch (error.code) {
