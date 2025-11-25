@@ -495,11 +495,12 @@ import {
   UIManager,
   Animated,
 } from 'react-native';
+import { useRouter } from 'expo-router'; // <--- 1. Import useRouter
 import { useTheme } from './ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import HapticPressable from './HapticPressable';
-import * as Print from 'expo-print';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as Print from 'expo-print'; // (Unused in this snippet, kept if needed)
+import * as FileSystem from 'expo-file-system/legacy'; // (Unused in this snippet)
 import { fetchActivities, ActivityItem } from './data/activities';
 import { ServiceLayout } from './ServiceLayout';
 
@@ -512,6 +513,7 @@ if (
 }
 
 export const AllEventsContent: React.FC = () => {
+  const router = useRouter(); // <--- 2. Initialize Router
   const { theme, isDarkMode } = useTheme();
   const [selectedTab, setSelectedTab] = useState<'SPORTS' | 'CULT' | 'TECH' | 'ALL'>('SPORTS');
   const [showUpcoming, setShowUpcoming] = useState(true);
@@ -552,7 +554,6 @@ export const AllEventsContent: React.FC = () => {
   const handleTabChange = (tab: typeof selectedTab) => {
     if (selectedTab === tab) return;
 
-    // 1. Configure the layout animation (Sliding effect)
     LayoutAnimation.configureNext({
         duration: 300,
         create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
@@ -560,7 +561,6 @@ export const AllEventsContent: React.FC = () => {
         delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
     });
 
-    // 2. Set State
     setSelectedTab(tab);
   };
 
@@ -569,7 +569,6 @@ export const AllEventsContent: React.FC = () => {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setShowUpcoming(status);
   };
-  // ---------------------------------
 
   const isEventPassed = (date: string, month: string, year: number): boolean => {
     const monthMap: Record<string, number> = {
@@ -604,16 +603,81 @@ export const AllEventsContent: React.FC = () => {
   }, [sortedActivities, selectedTab, showUpcoming]);
 
   const generatePDF = async () => {
-     if (activities.length === 0) {
+    if (activities.length === 0) {
       Alert.alert('No Events', 'There are no events to export.');
       return;
     }
-    // ... (Keep existing PDF Logic unchanged)
-    // For brevity, assuming PDF logic is same as previous
+
     try {
-        // Dummy execution for context
-        Alert.alert("PDF Generation", "This would trigger PDF generation logic.");
-    } catch(e) { console.log(e); }
+      const eventsHTML = sortedActivities
+        .map((a) => {
+          const isPassed = isEventPassed(a.date, a.month, a.year);
+          return `
+            <tr style="${isPassed ? 'opacity:0.5;text-decoration:line-through;' : ''}">
+              <td style="padding:8px;border:1px solid #ccc;">${a.date} ${a.month} ${a.year}</td>
+              <td style="padding:8px;border:1px solid #ccc;">
+                <span style="background:${tabColors[a.tab]};color:white;padding:2px 6px;border-radius:4px;">${a.tab}</span>
+              </td>
+              <td style="padding:8px;border:1px solid #ccc;font-weight:bold;">${a.title}</td>
+              <td style="padding:8px;border:1px solid #ccc;">${a.description}</td>
+              <td style="padding:8px;text-align:center;border:1px solid #ccc;">${isPassed ? '✓' : '—'}</td>
+            </tr>
+          `;
+        })
+        .join('');
+
+      const html = `
+        <html>
+          <body style="font-family:Arial;padding:24px;color:#333;">
+            <h1 style="color:#2196F3;">Campus Events Calendar</h1>
+            <p style="color:#666;font-size:14px;margin-bottom:24px;">
+              Generated on ${new Date().toLocaleDateString()}
+            </p>
+            <table style="width:100%;border-collapse:collapse;">
+              <thead>
+                <tr style="background:#f3f3f3;">
+                  <th>Date</th><th>Category</th><th>Title</th><th>Description</th><th>Status</th>
+                </tr>
+              </thead>
+              <tbody>${eventsHTML}</tbody>
+            </table>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html });
+      const pdfName = `Campus_Events_${new Date().getFullYear()}.pdf`;
+
+      if (Platform.OS === 'android') {
+        const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+
+        if (permissions.granted) {
+          const base64 = await FileSystem.readAsStringAsync(uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+
+          await FileSystem.StorageAccessFramework.createFileAsync(
+            permissions.directoryUri,
+            pdfName,
+            'application/pdf'
+          ).then(async (fileUri) => {
+            await FileSystem.writeAsStringAsync(fileUri, base64, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            Alert.alert('Downloaded', 'PDF saved to Downloads folder!');
+          });
+        } else {
+          Alert.alert('Permission Denied', 'Cannot save file without permission.');
+        }
+      } else {
+        const pdfPath = `${FileSystem.documentDirectory}${pdfName}`;
+        await FileSystem.moveAsync({ from: uri, to: pdfPath });
+        Alert.alert('Saved', `PDF saved to: ${pdfPath}`);
+      }
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      Alert.alert('Error', 'Failed to generate PDF.');
+    }
   };
 
   if (isLoading) {
@@ -636,7 +700,6 @@ export const AllEventsContent: React.FC = () => {
     );
   }
 
-  // Styles helpers
   const activePillColor = isDarkMode ? '#fff' : '#000';
   const inactivePillBg = isDarkMode ? 'rgba(255,255,255,0.1)' : '#f0f0f0';
   const cardBg = isDarkMode ? 'rgba(255,255,255,0.05)' : '#fff';
@@ -651,7 +714,7 @@ export const AllEventsContent: React.FC = () => {
     >
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         
-        {/* 1. Control Row: Toggle + PDF */}
+        {/* Control Row */}
         <View style={styles.controlRow}>
             <View style={[styles.togglePill, { backgroundColor: inactivePillBg }]}>
                 <TouchableOpacity 
@@ -682,7 +745,7 @@ export const AllEventsContent: React.FC = () => {
             </TouchableOpacity>
         </View>
 
-        {/* 2. Horizontal Filter Pills */}
+        {/* Filters */}
         <View style={styles.filterContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
                 {['SPORTS', 'CULT', 'TECH', 'ALL'].map((tab) => {
@@ -698,7 +761,6 @@ export const AllEventsContent: React.FC = () => {
                                     backgroundColor: isActive ? badgeColor : 'transparent',
                                     borderColor: isActive ? badgeColor : theme.inputBorder,
                                     borderWidth: 1,
-                                    // Smoothly animate scale on active
                                     transform: [{ scale: isActive ? 1.05 : 1 }]
                                 }
                             ]}
@@ -716,7 +778,7 @@ export const AllEventsContent: React.FC = () => {
             </ScrollView>
         </View>
 
-        {/* 3. Event List with Animation Wrapper */}
+        {/* Event List */}
         <Animated.ScrollView 
             style={[styles.scrollView, { opacity: listOpacity }]} 
             contentContainerStyle={styles.scrollContent}
@@ -739,6 +801,10 @@ export const AllEventsContent: React.FC = () => {
               return (
                 <HapticPressable
                   key={item.id}
+                  // 3. Navigate to dynamic route on press
+                  onPress={() => {
+                    router.push(`/(app)/eventinfo/${item.id}`); 
+                  }}
                   style={({ pressed }) => [
                     styles.card,
                     { 
@@ -801,8 +867,6 @@ const styles = StyleSheet.create({
   errorText: { marginTop: 16, fontSize: 16, fontWeight: '500' },
   retryBtn: { marginTop: 12, padding: 10 },
   retryText: { color: '#3B82F6', fontWeight: '600' },
-
-  // Control Row
   controlRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -830,10 +894,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  toggleText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  toggleText: { fontSize: 13, fontWeight: '600' },
   pdfBtn: {
     width: 36,
     height: 36,
@@ -841,16 +902,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  // Filters
-  filterContainer: {
-    marginTop: 16,
-    paddingBottom: 8,
-  },
-  filterScroll: {
-    paddingHorizontal: 20,
-    gap: 8,
-  },
+  filterContainer: { marginTop: 16, paddingBottom: 8 },
+  filterScroll: { paddingHorizontal: 20, gap: 8 },
   pill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -858,22 +911,15 @@ const styles = StyleSheet.create({
     minWidth: 70,
     alignItems: 'center',
   },
-  pillText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-
-  // List
+  pillText: { fontSize: 13, fontWeight: '600' },
   scrollView: { flex: 1, marginTop: 4 },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
-  
   card: {
     flexDirection: 'row',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    // Soft Shadow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,
@@ -885,57 +931,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minWidth: 44,
   },
-  dateText: {
-    fontSize: 22,
-    fontWeight: '700',
-    lineHeight: 26,
-  },
-  monthText: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
+  dateText: { fontSize: 22, fontWeight: '700', lineHeight: 26 },
+  monthText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
   divider: {
     width: 1,
     height: '80%',
     alignSelf: 'center',
     marginHorizontal: 16,
   },
-  contentColumn: {
-    flex: 1,
-    justifyContent: 'center',
-  },
+  contentColumn: { flex: 1, justifyContent: 'center' },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4,
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    flex: 1,
-    marginRight: 8,
-  },
+  cardTitle: { fontSize: 16, fontWeight: '600', flex: 1, marginRight: 8 },
   passedBadge: {
     backgroundColor: '#eee',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
-  passedText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#888',
-  },
-  cardDesc: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 10,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-  },
+  passedText: { fontSize: 10, fontWeight: '600', color: '#888' },
+  cardDesc: { fontSize: 13, lineHeight: 18, marginBottom: 10 },
+  cardFooter: { flexDirection: 'row' },
   miniBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -943,18 +963,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  miniBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-
-  // Empty State
+  dot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
+  miniBadgeText: { fontSize: 11, fontWeight: '600' },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -968,8 +978,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  emptyText: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
+  emptyText: { fontSize: 15, fontWeight: '500' },
 });

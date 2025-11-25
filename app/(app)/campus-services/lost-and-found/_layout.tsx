@@ -9,6 +9,7 @@ export default function SportsLayout() {
     >
       <Stack.Screen name="lost" />
       <Stack.Screen name="found" />
+      <Stack.Screen name="my-items" />
     </Stack>
   );
 }

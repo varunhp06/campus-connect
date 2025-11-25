@@ -30,13 +30,18 @@ interface UtilityCard {
 }
 
 interface ActivityItem {
-  id: string;
-  date: string;
-  tab: string;
-  month: string;
-  year: number;
+  id: string | number;       // Can be string or number based on your data
   title: string;
   description: string;
+  date: string;     // Your log showed `5` (number), code treated it as string
+  month: string;
+  year: number;
+  timestamp?: number;         // Used for time formatting
+  tab: 'SPORTS' | 'CULT' | 'TECH';
+  poster?: string;           // Optional string (url)
+  venue?: string;            // Optional string
+  keyPoints?: string[];      
+  createdAt?: number;
 }
 
 export const HomeContent: React.FC = () => {
@@ -195,7 +200,7 @@ export const HomeContent: React.FC = () => {
       description: "Report lost items and find your belongings",
       icon: require("../assets/images/icons/lost-and-found.png"),
       color: "#E84343",
-      route: "/campus-services/LostAndFoundSection",
+      route: "/campus-services/lost-and-found",
     },
     {
       id: "3",

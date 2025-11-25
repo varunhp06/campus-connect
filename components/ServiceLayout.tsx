@@ -1,5 +1,13 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, ImageSourcePropType } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  Image, 
+  ImageSourcePropType, 
+  Animated, 
+  Easing 
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from './ThemeContext';
 
@@ -24,8 +32,28 @@ export const ServiceLayout: React.FC<ServiceLayoutProps> = ({
 }) => {
   const { theme } = useTheme();
 
+  const fadeAnim = useRef(new Animated.Value(0)).current; 
+  const slideAnim = useRef(new Animated.Value(50)).current; 
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        easing: Easing.out(Easing.cubic), 
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
   return (
     <View style={styles.container}>
+      {/* HEADER (Static - No Animation) */}
       {showTitle && title && (
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.text }]}>
@@ -34,8 +62,21 @@ export const ServiceLayout: React.FC<ServiceLayoutProps> = ({
         </View>
       )}
 
-      <View style={styles.childrenContainer}>{children}</View>
+      {/* CHILDREN/BUTTONS (Animated) */}
+      {/* We replaced View with Animated.View here */}
+      <Animated.View 
+        style={[
+          styles.childrenContainer, 
+          { 
+            opacity: fadeAnim, 
+            transform: [{ translateY: slideAnim }] 
+          }
+        ]}
+      >
+        {children}
+      </Animated.View>
 
+      {/* BOTTOM IMAGE (Static - No Animation) */}
       {showBottomImage && bottomImage && (
         <View style={styles.bottomImageContainer}>
           <Image
@@ -50,7 +91,7 @@ export const ServiceLayout: React.FC<ServiceLayoutProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 , },
+  container: { flex: 1 },
   header: {
     marginTop: 20,
     paddingHorizontal: 20,
@@ -62,6 +103,7 @@ const styles = StyleSheet.create({
   },
   childrenContainer: {
     flex: 1,
+    // Ensure padding isn't clipped during animation if needed
   },
   bottomImageContainer: {
     position: 'absolute',

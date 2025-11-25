@@ -2,13 +2,18 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/firebaseConfig';
 
 export interface ActivityItem {
-  id: string;
-  date: string;
-  tab: 'SPORTS' | 'CULT' | 'TECH';
-  month: string;
-  year: number;
+  id: string | number;       // Can be string or number based on your data
   title: string;
   description: string;
+  date: string;     // Your log showed `5` (number), code treated it as string
+  month: string;
+  year: number;
+  timestamp?: number;         // Used for time formatting
+  tab: 'SPORTS' | 'CULT' | 'TECH';
+  poster?: string;           // Optional string (url)
+  venue?: string;            // Optional string
+  keyPoints?: string[];      
+  createdAt?: number;
 }
 
 export async function fetchActivities(): Promise<ActivityItem[]> {
