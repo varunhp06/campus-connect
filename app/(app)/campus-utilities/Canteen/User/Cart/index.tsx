@@ -1,29 +1,29 @@
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  Image,
-  ActivityIndicator,
-} from "react-native";
-import React, { useState, useEffect } from "react";
-import { Ionicons } from "@expo/vector-icons";
-import { ThemedLayout } from "@/components/ThemedLayout";
+import { CanteenCartItem, useCanteen } from "@/components/CanteenContext";
 import { ServiceLayout } from "@/components/ServiceLayout";
 import { useTheme } from "@/components/ThemeContext";
-import { db } from "../../../../../firebaseConfig";
+import { ThemedLayout } from "@/components/ThemedLayout";
+import { Ionicons } from "@expo/vector-icons";
 import {
-  collection,
-  query,
-  where,
-  getDocs,
-  addDoc,
-  onSnapshot,
-  serverTimestamp,
+    addDoc,
+    collection,
+    getDocs,
+    onSnapshot,
+    query,
+    serverTimestamp,
+    where,
 } from "firebase/firestore";
-import { useCanteen, CanteenCartItem } from "@/components/CanteenContext";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import { db } from "../../../../../../firebaseConfig";
 
 type Order = {
   id: string;
@@ -237,7 +237,7 @@ const Index = () => {
             source={
               item.img
                 ? { uri: item.img }
-                : require("../../../../../assets/images/placeholder.png")
+                : require("../../../../../../assets/images/placeholder.png")
             }
             style={styles.itemImage}
             resizeMode="cover"

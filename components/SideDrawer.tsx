@@ -19,7 +19,7 @@ import * as Haptics from 'expo-haptics';
 import HapticPressable from './HapticPressable';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const DRAWER_WIDTH = SCREEN_WIDTH * 0.82; // Slightly wider for better breathing room
+const DRAWER_WIDTH = SCREEN_WIDTH * 0.65; // Slightly wider for better breathing room
 
 interface SideDrawerProps {
   isOpen: boolean;
@@ -106,7 +106,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
   { id: 'profile', icon: 'person', label: 'My Profile', color: '#6366f1', route: '/(app)/Profile' },
   { id: 'settings', icon: 'settings', label: 'Settings', color: '#8b5cf6', route: '/(app)/Settings' },
   { id: 'notifications', icon: 'notifications', label: 'Notifications', color: '#ec4899', route: '/(app)/notifications' },
-  { id: 'orderhistory', icon: 'timer', label: 'Order History', color: '#e2bc01', route: '/(app)/campus-utilities/Canteen/OrderHistory' },
+  { id: 'orderhistory', icon: 'timer', label: 'Order History', color: '#e2bc01', route: '/(app)/campus-utilities/Canteen/User/OrderHistory' },
 ];
 
 

@@ -1,26 +1,24 @@
-import HapticPressable from "@/components/HapticPressable";
+import { useCanteen } from "@/components/CanteenContext";
 import { ServiceLayout } from "@/components/ServiceLayout";
+import { useTheme } from "@/components/ThemeContext";
 import { ThemedLayout } from "@/components/ThemedLayout";
 import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "@/components/ThemeContext";
-import React, { useEffect, useState } from "react";
-import { db } from "../../../../../firebaseConfig";
-import {
-  collection,
-  getDocs,
-} from "firebase/firestore";
-import {
-  ScrollView,
-  Text,
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  Alert,
-  ActivityIndicator,
-} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCanteen } from "@/components/CanteenContext";
+import {
+    collection,
+    getDocs,
+} from "firebase/firestore";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from "react-native";
+import { db } from "../../../../../../firebaseConfig";
 
 const icon = "pizza";
 const title = "Menu";
@@ -91,7 +89,7 @@ export default function Page() {
   };
 
   const navigateToCart = () => {
-    router.push("/(app)/campus-utilities/Canteen/Cart");
+    router.push("/(app)/campus-utilities/Canteen/User/Cart");
   };
 
   useEffect(() => {
@@ -159,7 +157,7 @@ export default function Page() {
             source={
               item.image || item.img
                 ? { uri: item.image || item.img }
-                : require("../../../../../assets/images/placeholder.png")
+                : require("../../../../../../assets/images/placeholder.png")
             }
             style={[
               {

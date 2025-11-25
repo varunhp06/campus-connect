@@ -20,7 +20,7 @@ import {
   orderBy,
   limit,
 } from "firebase/firestore";
-import { db, auth } from "../../../../../firebaseConfig"; // Adjust import path as needed
+import { db, auth } from "../../../../../../firebaseConfig"; // Adjust import path as needed
 import { useTheme } from "@/components/ThemeContext"; // Adjust import path as needed
 import { ThemedLayout } from "@/components/ThemedLayout"; // Adjust import path as needed
 import { ServiceLayout } from "@/components/ServiceLayout";

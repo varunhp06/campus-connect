@@ -114,7 +114,7 @@ export default function SettingsPage() {
               title="Order History"
               value="View"
               onPress={() =>
-                router.push("/campus-utilities/Canteen/OrderHistory")
+                router.push("/campus-utilities/Canteen/User/OrderHistory")
               }
               theme={theme}
               isDarkMode={isDarkMode}

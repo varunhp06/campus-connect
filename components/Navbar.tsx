@@ -83,10 +83,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        { pathname.startsWith("/campus-utilities/Canteen") && 
+        { pathname.startsWith("/campus-utilities/Canteen/User") && 
           <HapticPressable
             style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}
-            onPress={() => router.push("/campus-utilities/Canteen/Cart")}
+            onPress={() => router.push("/campus-utilities/Canteen/User/Cart")}
           >
             <Text style={styles.themeIcon}>🛒</Text>
           </HapticPressable>

@@ -32,7 +32,7 @@ export default function RootLayout() {
       }}
     >
       <Stack.Screen
-        name="Canteen/index"
+        name="Canteen"
         options={{
           headerShown: false,
         }}

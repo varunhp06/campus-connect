@@ -29,7 +29,7 @@ export const FEATURES: AppFeature[] = [
     title: "Order History",
     description: "View all your completed canteen orders",
     keywords: ["history", "order", "past", "canteen"],
-    route: "/campus-utilities/Canteen/OrderHistory",
+    route: "/campus-utilities/Canteen/User/OrderHistory",
     icon: "timer",
     roles: ["student", "staff", "admin"],
   },
