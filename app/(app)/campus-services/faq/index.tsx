@@ -103,7 +103,7 @@ export default function FAQSection() {
         icon='help'
         title="Frequently Asked Questions"
         buttons={serviceButtons}
-        bottomImage={require('@/assets/images/backgrounds/cycle.png')} 
+        bottomImage={require('@/assets/images/backgrounds/Faq.png')} 
       />
     </ThemedLayout>
   );

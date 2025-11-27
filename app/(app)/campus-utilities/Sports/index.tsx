@@ -78,6 +78,13 @@ export default function SportsSection() {
         color: "#4CAF50",
         route: "/(app)/campus-utilities/Sports/CoachAttendance",
       },
+      {
+        id: "requestApproval",
+        title: "Request Approval",
+        description: "Approve Rent Request",
+        color: "#4CAF50",
+        route: "/(app)/campus-utilities/Sports/Request",
+      },
     ];
   } else if (isSportsAdmin) {
     serviceButtons = [

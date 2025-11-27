@@ -30,16 +30,16 @@ interface UtilityCard {
 }
 
 interface ActivityItem {
-  id: string | number;       // Can be string or number based on your data
+  id: string | number;      
   title: string;
   description: string;
-  date: string;     // Your log showed `5` (number), code treated it as string
+  date: string;   
   month: string;
   year: number;
-  timestamp?: number;         // Used for time formatting
+  timestamp?: number;         
   tab: 'SPORTS' | 'CULT' | 'TECH';
-  poster?: string;           // Optional string (url)
-  venue?: string;            // Optional string
+  poster?: string;          
+  venue?: string;          
   keyPoints?: string[];      
   createdAt?: number;
 }
@@ -51,15 +51,12 @@ export const HomeContent: React.FC = () => {
     "SPORTS" | "CULT" | "TECH" | "ALL"
   >("SPORTS");
   
-  // Add state for activities
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Add state for event management access
   const [hasEventManagementAccess, setHasEventManagementAccess] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
 
-  // Add state for pull-to-refresh
   const [refreshing, setRefreshing] = useState(false);
 
   const translateX = useRef(new Animated.Value(0)).current;
@@ -67,19 +64,16 @@ export const HomeContent: React.FC = () => {
 
   const TAB_WIDTH = containerWidth / 4;
 
-  // Fetch activities from Firestore
   const loadActivities = async () => {
     const fetchedActivities = await fetchActivities();
     setActivities(fetchedActivities);
   };
 
-  // Check if user has event management access
   const checkAccess = async () => {
     const hasAccess = await checkUserHasEventManagementAccess();
     setHasEventManagementAccess(hasAccess);
   };
 
-  // Initial load
   useEffect(() => {
     const initialLoad = async () => {
       setIsLoading(true);
@@ -91,7 +85,6 @@ export const HomeContent: React.FC = () => {
     initialLoad();
   }, []);
 
-  // Pull-to-refresh handler
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([loadActivities(), checkAccess()]);
@@ -124,15 +117,7 @@ export const HomeContent: React.FC = () => {
       icon: require("../assets/images/icons/sports.png"),
       color: "#4CAF50",
       route: "/campus-utilities/Sports",
-    },
-    {
-      id: "3",
-      title: "Cycle Rental",
-      description: "Enjoy casual rides around campus",
-      icon: require("../assets/images/icons/cycle-rental.png"),
-      color: "#FFC107",
-      route: "/campus-utilities/CycleSection",
-    },
+    }
   ];
 
   const tabColors: Record<string, string> = {
