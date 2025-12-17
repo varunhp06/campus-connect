@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   Modal,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +22,7 @@ import {
 } from 'firebase/firestore';
 import HapticPressable from './HapticPressable';
 import { ServiceLayout } from './ServiceLayout';
+import CustomAlert from './CustomAlert';
 
 export const checkUserHasEventManagementAccess = async (): Promise<boolean> => {
   try {
@@ -98,6 +98,49 @@ export const EventsManagementContent: React.FC = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [showYearPicker, setShowYearPicker] = useState(false);
+
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    confirmText: 'Okay',
+    cancelText: 'Cancel',
+    onConfirm: () => {},
+    confirmButtonColor: '#007AFF'
+  });
+
+  const showAlert = (title: string, message: string, isError = false) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      confirmText: 'Okay',
+      cancelText: 'Close',
+      confirmButtonColor: isError ? '#ef4444' : '#007AFF',
+      onConfirm: () => setAlertConfig(prev => ({ ...prev, visible: false })),
+    });
+  };
+
+  const showConfirmation = (
+    title: string, 
+    message: string, 
+    onConfirm: () => void, 
+    confirmText = 'Confirm', 
+    confirmButtonColor = '#007AFF'
+  ) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      confirmText,
+      cancelText: 'Cancel',
+      confirmButtonColor,
+      onConfirm: () => {
+        onConfirm();
+        setAlertConfig(prev => ({ ...prev, visible: false }));
+      },
+    });
+  };
 
   useEffect(() => {
     const checkUserClaims = async () => {
@@ -267,18 +310,18 @@ export const EventsManagementContent: React.FC = () => {
 
   const handleAddEvent = async () => {
     if (!title || !description || !date || !month || !year) {
-      Alert.alert('Error', 'Please fill all fields');
+      showAlert('Error', 'Please fill all fields', true);
       return;
     }
 
     const validation = validateDate(date, month, year);
     if (!validation.valid) {
-      Alert.alert('Error', validation.error || 'Invalid date');
+      showAlert('Error', validation.error || 'Invalid date', true);
       return;
     }
 
     if (!selectedTab) {
-      Alert.alert('Error', 'Please select a category');
+      showAlert('Error', 'Please select a category', true);
       return;
     }
 
@@ -296,29 +339,29 @@ export const EventsManagementContent: React.FC = () => {
         createdAt: Date.now(),
       });
 
-      Alert.alert('Success', 'Event added successfully');
+      showAlert('Success', 'Event added successfully');
       resetForm();
       setModalVisible(false);
     } catch (error) {
-      Alert.alert('Error', 'Failed to add event');
+      showAlert('Error', 'Failed to add event', true);
       console.error(error);
     }
   };
 
   const handleRequestEvent = async () => {
     if (!title || !description || !date || !month || !year) {
-      Alert.alert('Error', 'Please fill all fields');
+      showAlert('Error', 'Please fill all fields', true);
       return;
     }
 
     const validation = validateDate(date, month, year);
     if (!validation.valid) {
-      Alert.alert('Error', validation.error || 'Invalid date');
+      showAlert('Error', validation.error || 'Invalid date', true);
       return;
     }
 
     if (!selectedTab) {
-      Alert.alert('Error', 'Please select a category');
+      showAlert('Error', 'Please select a category', true);
       return;
     }
 
@@ -338,11 +381,11 @@ export const EventsManagementContent: React.FC = () => {
         requestedAt: Date.now(),
       });
 
-      Alert.alert('Success', 'Event request submitted for approval');
+      showAlert('Success', 'Event request submitted for approval');
       resetForm();
       setRequestModalVisible(false);
     } catch (error) {
-      Alert.alert('Error', 'Failed to submit request');
+      showAlert('Error', 'Failed to submit request', true);
       console.error(error);
     }
   };
@@ -362,9 +405,9 @@ export const EventsManagementContent: React.FC = () => {
 
       await deleteDoc(doc(db, 'eventRequests', request.id));
 
-      Alert.alert('Success', 'Event approved and published');
+      showAlert('Success', 'Event approved and published');
     } catch (error) {
-      Alert.alert('Error', 'Failed to approve request');
+      showAlert('Error', 'Failed to approve request', true);
       console.error(error);
     }
   };
@@ -372,33 +415,28 @@ export const EventsManagementContent: React.FC = () => {
   const handleRejectRequest = async (requestId: string) => {
     try {
       await deleteDoc(doc(db, 'eventRequests', requestId));
-      Alert.alert('Success', 'Event request rejected');
+      showAlert('Success', 'Event request rejected');
     } catch (error) {
-      Alert.alert('Error', 'Failed to reject request');
+      showAlert('Error', 'Failed to reject request', true);
       console.error(error);
     }
   };
 
   const handleDeleteEvent = async (eventId: string) => {
-    Alert.alert(
+    showConfirmation(
       'Confirm Delete',
       'Are you sure you want to delete this event?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteDoc(doc(db, 'events', eventId));
-              Alert.alert('Success', 'Event deleted');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete event');
-              console.error(error);
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          await deleteDoc(doc(db, 'events', eventId));
+          showAlert('Success', 'Event deleted');
+        } catch (error) {
+          showAlert('Error', 'Failed to delete event', true);
+          console.error(error);
+        }
+      },
+      'Delete',
+      '#ef4444' 
     );
   };
 
@@ -471,318 +509,329 @@ export const EventsManagementContent: React.FC = () => {
       title={"Manage Events"}
       showTitle={true}
       showBottomImage={false}
-      >
-            <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.content}>
-        {availableTabs.length > 1 && (
-          <View style={styles.tabContainer}>
-            {availableTabs.map((tab) => (
-              <HapticPressable
-                key={tab}
-                style={[
-                  styles.tab,
-                  selectedTab === tab && { backgroundColor: tab === 'SPORTS' ? '#4CAF50' : tab === 'CULT' ? '#E91E63' : '#2196F3'},
-                  { borderColor: theme.inputBorder },
-                ]}
-                onPress={() => setSelectedTab(tab)}
-              >
-                <Ionicons
-                  name={
-                    tab === 'SPORTS'
-                      ? 'basketball'
-                      : tab === 'CULT'
-                      ? 'musical-notes'
-                      : 'code-slash'
-                  }
-                  size={20}
-                  color={selectedTab === tab ? '#fff' : theme.text}
-                />
-                <Text
+    >
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <CustomAlert 
+          visible={alertConfig.visible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          onConfirm={alertConfig.onConfirm}
+          onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+          confirmText={alertConfig.confirmText}
+          cancelText={alertConfig.cancelText}
+          confirmButtonColor={alertConfig.confirmButtonColor}
+        />
+
+        <View style={styles.content}>
+          {availableTabs.length > 1 && (
+            <View style={styles.tabContainer}>
+              {availableTabs.map((tab) => (
+                <HapticPressable
+                  key={tab}
                   style={[
-                    styles.tabText,
-                    { color: selectedTab === tab ? '#fff' : theme.text },
+                    styles.tab,
+                    selectedTab === tab && { backgroundColor: tab === 'SPORTS' ? '#4CAF50' : tab === 'CULT' ? '#E91E63' : '#2196F3'},
+                    { borderColor: theme.inputBorder },
                   ]}
+                  onPress={() => setSelectedTab(tab)}
                 >
-                  {tab}
-                </Text>
-              </HapticPressable>
-            ))}
-          </View>
-        )}
-        {availableTabs.length === 1 && (
-          <View style={styles.singleTabContainer}>
-            <Text style={[styles.singleTabText, { color: theme.text }]}>
-              Managing {availableTabs[0]} Events
-            </Text>
-          </View>
-        )}
-        <View style={styles.actionButtons}>
-          {isAdminForTab() && (
-            <HapticPressable
-              style={[styles.actionButton, { backgroundColor: '#FF9800' }]}
-              onPress={() => setModalVisible(true)}
-            >
-              <Ionicons name="add-circle" size={20} color="#fff" />
-              <Text style={styles.actionButtonText}>Add Event</Text>
-            </HapticPressable>
-          )}
-
-          {isCoordinatorForTab() && (
-            <HapticPressable
-              style={[styles.actionButton, { backgroundColor: '#FF9800' }]}
-              onPress={() => setRequestModalVisible(true)}
-            >
-              <Ionicons name="send" size={20} color="#fff" />
-              <Text style={styles.actionButtonText}>Request Event</Text>
-            </HapticPressable>
-          )}
-        </View>
-
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {isAdminForTab() && eventRequests.length > 0 && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                Pending Requests ({eventRequests.length})
-              </Text>
-              {eventRequests.map((request) => (
-                <View
-                  key={request.id}
-                  style={[styles.eventCard, { backgroundColor: theme.inputBackground }]}
-                >
-                  <View style={styles.eventHeader}>
-                    <Text style={[styles.eventTitle, { color: theme.text }]}>
-                      {request.title}
-                    </Text>
-                    <Text style={[styles.requestBadge, { backgroundColor: '#FF9800' }]}>
-                      Pending
-                    </Text>
-                  </View>
-                  <Text style={[styles.eventDescription, { color: theme.text }]}>
-                    {request.description}
+                  <Ionicons
+                    name={
+                      tab === 'SPORTS'
+                        ? 'basketball'
+                        : tab === 'CULT'
+                        ? 'musical-notes'
+                        : 'code-slash'
+                    }
+                    size={20}
+                    color={selectedTab === tab ? '#fff' : theme.text}
+                  />
+                  <Text
+                    style={[
+                      styles.tabText,
+                      { color: selectedTab === tab ? '#fff' : theme.text },
+                    ]}
+                  >
+                    {tab}
                   </Text>
-                  <View style={styles.eventMeta}>
-                    <Text style={[styles.eventDate, { color: theme.text }]}>
-                      <Ionicons name="calendar-outline" size={14} /> {request.date} {request.month} {request.year}
-                    </Text>
-                    <Text style={[styles.requestedBy, { color: theme.text }]}>
-                      By: {request.requestedBy}
-                    </Text>
-                  </View>
-                  <View style={styles.requestActions}>
-                    <HapticPressable
-                      style={[styles.approveButton, { backgroundColor: 'green' }]}
-                      onPress={() => handleApproveRequest(request)}
-                    >
-                      <Ionicons name="checkmark-circle" size={16} color="#fff" />
-                      <Text style={styles.approveButtonText}>Approve</Text>
-                    </HapticPressable>
-                    <HapticPressable
-                      style={[styles.rejectButton, { backgroundColor: 'red' }]}
-                      onPress={() => handleRejectRequest(request.id)}
-                    >
-                      <Ionicons name="close-circle" size={16} color="#fff" />
-                      <Text style={styles.rejectButtonText}>Reject</Text>
-                    </HapticPressable>
-                  </View>
-                </View>
+                </HapticPressable>
               ))}
             </View>
           )}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              Published Events ({events.length})
-            </Text>
-            {events.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="calendar-outline" size={48} color={theme.text} />
-                <Text style={[styles.emptyText, { color: theme.text }]}>
-                  No events published yet
-                </Text>
-              </View>
-            ) : (
-              events.map((event) => (
-                <View
-                  key={event.id}
-                  style={[styles.eventCard, { backgroundColor: theme.inputBackground }]}
-                >
-                  <View style={styles.eventHeader}>
-                    <Text style={[styles.eventTitle, { color: theme.text }]}>
-                      {event.title}
-                    </Text>
-                    {isAdminForTab() && (
-                      <HapticPressable onPress={() => handleDeleteEvent(event.id)}>
-                        <Ionicons name="trash-outline" size={20} color={'red'} />
-                      </HapticPressable>
-                    )}
-                  </View>
-                  <Text style={[styles.eventDescription, { color: theme.text }]}>
-                    {event.description}
-                  </Text>
-                  <Text style={[styles.eventDate, { color: theme.text }]}>
-                    <Ionicons name="calendar-outline" size={14} /> {event.date} {event.month} {event.year}
-                  </Text>
-                </View>
-              ))
+          {availableTabs.length === 1 && (
+            <View style={styles.singleTabContainer}>
+              <Text style={[styles.singleTabText, { color: theme.text }]}>
+                Managing {availableTabs[0]} Events
+              </Text>
+            </View>
+          )}
+          <View style={styles.actionButtons}>
+            {isAdminForTab() && (
+              <HapticPressable
+                style={[styles.actionButton, { backgroundColor: '#FF9800' }]}
+                onPress={() => setModalVisible(true)}
+              >
+                <Ionicons name="add-circle" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>Add Event</Text>
+              </HapticPressable>
+            )}
+
+            {isCoordinatorForTab() && (
+              <HapticPressable
+                style={[styles.actionButton, { backgroundColor: '#FF9800' }]}
+                onPress={() => setRequestModalVisible(true)}
+              >
+                <Ionicons name="send" size={20} color="#fff" />
+                <Text style={styles.actionButtonText}>Request Event</Text>
+              </HapticPressable>
             )}
           </View>
-        </ScrollView>
-        <Modal
-          visible={modalVisible}
-          animationType="slide"
-          transparent
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: theme.text }]}>Add New Event</Text>
-                <HapticPressable onPress={() => setModalVisible(false)}>
-                  <Ionicons name="close" size={24} color={theme.text} />
-                </HapticPressable>
+
+          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+            {isAdminForTab() && eventRequests.length > 0 && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                  Pending Requests ({eventRequests.length})
+                </Text>
+                {eventRequests.map((request) => (
+                  <View
+                    key={request.id}
+                    style={[styles.eventCard, { backgroundColor: theme.inputBackground }]}
+                  >
+                    <View style={styles.eventHeader}>
+                      <Text style={[styles.eventTitle, { color: theme.text }]}>
+                        {request.title}
+                      </Text>
+                      <Text style={[styles.requestBadge, { backgroundColor: '#FF9800' }]}>
+                        Pending
+                      </Text>
+                    </View>
+                    <Text style={[styles.eventDescription, { color: theme.text }]}>
+                      {request.description}
+                    </Text>
+                    <View style={styles.eventMeta}>
+                      <Text style={[styles.eventDate, { color: theme.text }]}>
+                        <Ionicons name="calendar-outline" size={14} /> {request.date} {request.month} {request.year}
+                      </Text>
+                      <Text style={[styles.requestedBy, { color: theme.text }]}>
+                        By: {request.requestedBy}
+                      </Text>
+                    </View>
+                    <View style={styles.requestActions}>
+                      <HapticPressable
+                        style={[styles.approveButton, { backgroundColor: 'green' }]}
+                        onPress={() => handleApproveRequest(request)}
+                      >
+                        <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                        <Text style={styles.approveButtonText}>Approve</Text>
+                      </HapticPressable>
+                      <HapticPressable
+                        style={[styles.rejectButton, { backgroundColor: 'red' }]}
+                        onPress={() => handleRejectRequest(request.id)}
+                      >
+                        <Ionicons name="close-circle" size={16} color="#fff" />
+                        <Text style={styles.rejectButtonText}>Reject</Text>
+                      </HapticPressable>
+                    </View>
+                  </View>
+                ))}
               </View>
-
-              <ScrollView>
-                <TextInput
-                  style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
-                  placeholder="Event Title"
-                  placeholderTextColor={theme.placeholder}
-                  value={title}
-                  onChangeText={setTitle}
-                />
-                <TextInput
-                  style={[styles.input, styles.textArea, { backgroundColor: theme.inputBackground, color: theme.text }]}
-                  placeholder="Event Description"
-                  placeholderTextColor={theme.placeholder}
-                  value={description}
-                  onChangeText={setDescription}
-                  multiline
-                  numberOfLines={4}
-                />
-                <HapticPressable
-                  style={[styles.input, { backgroundColor: theme.inputBackground, justifyContent: 'center' }]}
-                  onPress={() => setShowDatePicker(true)}
-                >
-                  <Text style={[styles.pickerText, { color: date ? theme.text : theme.placeholder }]}>
-                    {date || 'Select Date'}
+            )}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                Published Events ({events.length})
+              </Text>
+              {events.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="calendar-outline" size={48} color={theme.text} />
+                  <Text style={[styles.emptyText, { color: theme.text }]}>
+                    No events published yet
                   </Text>
-                </HapticPressable>
-                <HapticPressable
-                  style={[styles.input, { backgroundColor: theme.inputBackground, justifyContent: 'center' }]}
-                  onPress={() => setShowMonthPicker(true)}
-                >
-                  <Text style={[styles.pickerText, { color: month ? theme.text : theme.placeholder }]}>
-                    {month || 'Select Month'}
-                  </Text>
-                </HapticPressable>
-                <HapticPressable
-                  style={[styles.input, { backgroundColor: theme.inputBackground, justifyContent: 'center' }]}
-                  onPress={() => setShowYearPicker(true)}
-                >
-                  <Text style={[styles.pickerText, { color: year ? theme.text : theme.placeholder }]}>
-                    {year || 'Select Year'}
-                  </Text>
-                </HapticPressable>
-
-                <HapticPressable
-                  style={[styles.submitButton, { backgroundColor: theme.primaryText }]}
-                  onPress={handleAddEvent}
-                >
-                  <Text style={[styles.submitButtonText, {color: theme.background}]}>Add Event</Text>
-                </HapticPressable>
-              </ScrollView>
+                </View>
+              ) : (
+                events.map((event) => (
+                  <View
+                    key={event.id}
+                    style={[styles.eventCard, { backgroundColor: theme.inputBackground }]}
+                  >
+                    <View style={styles.eventHeader}>
+                      <Text style={[styles.eventTitle, { color: theme.text }]}>
+                        {event.title}
+                      </Text>
+                      {isAdminForTab() && (
+                        <HapticPressable onPress={() => handleDeleteEvent(event.id)}>
+                          <Ionicons name="trash-outline" size={20} color={'red'} />
+                        </HapticPressable>
+                      )}
+                    </View>
+                    <Text style={[styles.eventDescription, { color: theme.text }]}>
+                      {event.description}
+                    </Text>
+                    <Text style={[styles.eventDate, { color: theme.text }]}>
+                      <Ionicons name="calendar-outline" size={14} /> {event.date} {event.month} {event.year}
+                    </Text>
+                  </View>
+                ))
+              )}
             </View>
-          </View>
-        </Modal>
-        <Modal
-          visible={requestModalVisible}
-          animationType="slide"
-          transparent
-          onRequestClose={() => setRequestModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: theme.text }]}>Request Event</Text>
-                <HapticPressable onPress={() => setRequestModalVisible(false)}>
-                  <Ionicons name="close" size={24} color={theme.text} />
-                </HapticPressable>
+          </ScrollView>
+          <Modal
+            visible={modalVisible}
+            animationType="slide"
+            transparent
+            onRequestClose={() => setModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: theme.text }]}>Add New Event</Text>
+                  <HapticPressable onPress={() => setModalVisible(false)}>
+                    <Ionicons name="close" size={24} color={theme.text} />
+                  </HapticPressable>
+                </View>
+
+                <ScrollView>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
+                    placeholder="Event Title"
+                    placeholderTextColor={theme.placeholder}
+                    value={title}
+                    onChangeText={setTitle}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.textArea, { backgroundColor: theme.inputBackground, color: theme.text }]}
+                    placeholder="Event Description"
+                    placeholderTextColor={theme.placeholder}
+                    value={description}
+                    onChangeText={setDescription}
+                    multiline
+                    numberOfLines={4}
+                  />
+                  <HapticPressable
+                    style={[styles.input, { backgroundColor: theme.inputBackground, justifyContent: 'center' }]}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Text style={[styles.pickerText, { color: date ? theme.text : theme.placeholder }]}>
+                      {date || 'Select Date'}
+                    </Text>
+                  </HapticPressable>
+                  <HapticPressable
+                    style={[styles.input, { backgroundColor: theme.inputBackground, justifyContent: 'center' }]}
+                    onPress={() => setShowMonthPicker(true)}
+                  >
+                    <Text style={[styles.pickerText, { color: month ? theme.text : theme.placeholder }]}>
+                      {month || 'Select Month'}
+                    </Text>
+                  </HapticPressable>
+                  <HapticPressable
+                    style={[styles.input, { backgroundColor: theme.inputBackground, justifyContent: 'center' }]}
+                    onPress={() => setShowYearPicker(true)}
+                  >
+                    <Text style={[styles.pickerText, { color: year ? theme.text : theme.placeholder }]}>
+                      {year || 'Select Year'}
+                    </Text>
+                  </HapticPressable>
+
+                  <HapticPressable
+                    style={[styles.submitButton, { backgroundColor: theme.primaryText }]}
+                    onPress={handleAddEvent}
+                  >
+                    <Text style={[styles.submitButtonText, {color: theme.background}]}>Add Event</Text>
+                  </HapticPressable>
+                </ScrollView>
               </View>
-
-              <ScrollView>
-                <TextInput
-                  style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
-                  placeholder="Event Title"
-                  placeholderTextColor={theme.placeholder}
-                  value={title}
-                  onChangeText={setTitle}
-                />
-                <TextInput
-                  style={[styles.input, styles.textArea, { backgroundColor: theme.inputBackground, color: theme.text }]}
-                  placeholder="Event Description"
-                  placeholderTextColor={theme.placeholder}
-                  value={description}
-                  onChangeText={setDescription}
-                  multiline
-                  numberOfLines={4}
-                />
-                <HapticPressable
-                  style={[styles.input, { backgroundColor: theme.inputBackground, justifyContent: 'center' }]}
-                  onPress={() => setShowDatePicker(true)}
-                >
-                  <Text style={[styles.pickerText, { color: date ? theme.text : theme.placeholder }]}>
-                    {date || 'Select Date'}
-                  </Text>
-                </HapticPressable>
-                <HapticPressable
-                  style={[styles.input, { backgroundColor: theme.inputBackground, justifyContent: 'center' }]}
-                  onPress={() => setShowMonthPicker(true)}
-                >
-                  <Text style={[styles.pickerText, { color: month ? theme.text : theme.placeholder }]}>
-                    {month || 'Select Month'}
-                  </Text>
-                </HapticPressable>
-                <HapticPressable
-                  style={[styles.input, { backgroundColor: theme.inputBackground, justifyContent: 'center' }]}
-                  onPress={() => setShowYearPicker(true)}
-                >
-                  <Text style={[styles.pickerText, { color: year ? theme.text : theme.placeholder }]}>
-                    {year || 'Select Year'}
-                  </Text>
-                </HapticPressable>
-
-                <HapticPressable
-                  style={[styles.submitButton, { backgroundColor: theme.text }]}
-                  onPress={handleRequestEvent}
-                >
-                  <Text style={[styles.submitButtonText, {color: theme.background}]}>Submit Request</Text>
-                </HapticPressable>
-              </ScrollView>
             </View>
-          </View>
-        </Modal>
-        {renderPickerModal(
-          showDatePicker,
-          () => setShowDatePicker(false),
-          DAYS,
-          setDate,
-          'Select Date'
-        )}
-        {renderPickerModal(
-          showMonthPicker,
-          () => setShowMonthPicker(false),
-          MONTHS,
-          setMonth,
-          'Select Month'
-        )}
-        {renderPickerModal(
-          showYearPicker,
-          () => setShowYearPicker(false),
-          YEARS,
-          setYear,
-          'Select Year'
-        )}
+          </Modal>
+          <Modal
+            visible={requestModalVisible}
+            animationType="slide"
+            transparent
+            onRequestClose={() => setRequestModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, { color: theme.text }]}>Request Event</Text>
+                  <HapticPressable onPress={() => setRequestModalVisible(false)}>
+                    <Ionicons name="close" size={24} color={theme.text} />
+                  </HapticPressable>
+                </View>
+
+                <ScrollView>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
+                    placeholder="Event Title"
+                    placeholderTextColor={theme.placeholder}
+                    value={title}
+                    onChangeText={setTitle}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.textArea, { backgroundColor: theme.inputBackground, color: theme.text }]}
+                    placeholder="Event Description"
+                    placeholderTextColor={theme.placeholder}
+                    value={description}
+                    onChangeText={setDescription}
+                    multiline
+                    numberOfLines={4}
+                  />
+                  <HapticPressable
+                    style={[styles.input, { backgroundColor: theme.inputBackground, justifyContent: 'center' }]}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Text style={[styles.pickerText, { color: date ? theme.text : theme.placeholder }]}>
+                      {date || 'Select Date'}
+                    </Text>
+                  </HapticPressable>
+                  <HapticPressable
+                    style={[styles.input, { backgroundColor: theme.inputBackground, justifyContent: 'center' }]}
+                    onPress={() => setShowMonthPicker(true)}
+                  >
+                    <Text style={[styles.pickerText, { color: month ? theme.text : theme.placeholder }]}>
+                      {month || 'Select Month'}
+                    </Text>
+                  </HapticPressable>
+                  <HapticPressable
+                    style={[styles.input, { backgroundColor: theme.inputBackground, justifyContent: 'center' }]}
+                    onPress={() => setShowYearPicker(true)}
+                  >
+                    <Text style={[styles.pickerText, { color: year ? theme.text : theme.placeholder }]}>
+                      {year || 'Select Year'}
+                    </Text>
+                  </HapticPressable>
+
+                  <HapticPressable
+                    style={[styles.submitButton, { backgroundColor: theme.text }]}
+                    onPress={handleRequestEvent}
+                  >
+                    <Text style={[styles.submitButtonText, {color: theme.background}]}>Submit Request</Text>
+                  </HapticPressable>
+                </ScrollView>
+              </View>
+            </View>
+          </Modal>
+          {renderPickerModal(
+            showDatePicker,
+            () => setShowDatePicker(false),
+            DAYS,
+            setDate,
+            'Select Date'
+          )}
+          {renderPickerModal(
+            showMonthPicker,
+            () => setShowMonthPicker(false),
+            MONTHS,
+            setMonth,
+            'Select Month'
+          )}
+          {renderPickerModal(
+            showYearPicker,
+            () => setShowYearPicker(false),
+            YEARS,
+            setYear,
+            'Select Year'
+          )}
+        </View>
       </View>
-    </View>
     </ServiceLayout>
   );
 };

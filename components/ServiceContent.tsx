@@ -40,9 +40,6 @@ export const ServiceContent: React.FC<ServiceContentProps> = ({
 }) => {
   const { theme } = useTheme();
   const router = useRouter();
-
-
-
   const renderButton = ({ item }: { item: ServiceButton }) => {
     const isOffline = item.status?.toLowerCase() === "offline";
     const isOnline = item.status?.toLowerCase() === "online";

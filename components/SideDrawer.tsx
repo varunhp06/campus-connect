@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   Animated,
   Dimensions,
   PanResponder,
-  Alert,
   Easing,
   Platform,
 } from 'react-native';
@@ -17,9 +16,10 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import HapticPressable from './HapticPressable';
+import CustomAlert from './CustomAlert';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const DRAWER_WIDTH = SCREEN_WIDTH * 0.65; // Slightly wider for better breathing room
+const DRAWER_WIDTH = SCREEN_WIDTH * 0.65; 
 
 interface SideDrawerProps {
   isOpen: boolean;
@@ -28,7 +28,9 @@ interface SideDrawerProps {
 
 export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
   const { theme, isDarkMode } = useTheme();
-  // Animation refs
+  
+  const [showLogoutAlert, setShowLogoutAlert] = useState(false);
+
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const contentScale = useRef(new Animated.Value(0.95)).current;
@@ -38,7 +40,6 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
   const userName = user?.displayName  || 'Guest User';
   const userEmail = user?.email || 'Sign in to access features';
 
-  // Animation Logic
   useEffect(() => {
     const config = { useNativeDriver: true };
     if (isOpen) {
@@ -58,7 +59,6 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
     }
   }, [isOpen]);
 
-  // Gesture Handling
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -68,7 +68,6 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
           slideAnim.setValue(gestureState.dx);
           const progress = Math.abs(gestureState.dx) / DRAWER_WIDTH;
           overlayOpacity.setValue(1 - progress);
-          // Haptic trigger point
           if (progress > 0.5 && !hasTriggeredHaptic.current) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             hasTriggeredHaptic.current = true;
@@ -87,28 +86,23 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
     })
   ).current;
 
-  const handleLogout = async () => {
-    Alert.alert('Log Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Log Out',
-        style: 'destructive',
-        onPress: async () => {
-          await signOut(auth);
-          onClose();
-          router.replace('/LoginScreen');
-        },
-      },
-    ]);
+  const handleLogoutPress = () => {
+    setShowLogoutAlert(true);
+  };
+
+  const confirmLogout = async () => {
+    setShowLogoutAlert(false);
+    await signOut(auth);
+    onClose();
+    router.replace('/LoginScreen');
   };
 
   const menuItems = [
-  { id: 'profile', icon: 'person', label: 'My Profile', color: '#6366f1', route: '/(app)/Profile' },
-  { id: 'settings', icon: 'settings', label: 'Settings', color: '#8b5cf6', route: '/(app)/Settings' },
-  { id: 'notifications', icon: 'notifications', label: 'Notifications', color: '#ec4899', route: '/(app)/notifications' },
-  { id: 'orderhistory', icon: 'timer', label: 'Order History', color: '#e2bc01', route: '/(app)/campus-utilities/Canteen/User/OrderHistory' },
-];
-
+    { id: 'profile', icon: 'person', label: 'My Profile', color: '#6366f1', route: '/(app)/Profile' },
+    { id: 'settings', icon: 'settings', label: 'Settings', color: '#8b5cf6', route: '/(app)/Settings' },
+    { id: 'notifications', icon: 'notifications', label: 'Notifications', color: '#ec4899', route: '/(app)/notifications' },
+    { id: 'orderhistory', icon: 'timer', label: 'Order History', color: '#e2bc01', route: '/(app)/campus-utilities/Canteen/User/OrderHistory' },
+  ];
 
   const drawerBg = isDarkMode ? '#0f172a' : '#ffffff';
   const cardBg = isDarkMode ? 'rgba(255,255,255,0.05)' : '#f8fafc';
@@ -116,7 +110,17 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
 
   return (
     <>
-      {/* Backdrop */}
+      <CustomAlert
+        visible={showLogoutAlert}
+        title="Log Out"
+        message="Are you sure you want to sign out?"
+        onClose={() => setShowLogoutAlert(false)}
+        onConfirm={confirmLogout}
+        confirmText="Log Out"
+        cancelText="Cancel"
+        confirmButtonColor='#ef4444'
+      />
+
       <Animated.View 
         style={[styles.overlay, { opacity: overlayOpacity }]} 
         pointerEvents={isOpen ? 'auto' : 'none'}
@@ -124,7 +128,6 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
         <HapticPressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
-      {/* Drawer Container */}
       <Animated.View
         {...panResponder.panHandlers}
         style={[
@@ -145,7 +148,6 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
             </HapticPressable>
           </View>
 
-          {/* 2. Modern Profile Card */}
           <View style={[styles.profileCard, { backgroundColor: cardBg, borderColor: borderColor }]}>
             <View style={styles.avatarRow}>
               <View style={styles.avatarContainer}>
@@ -159,7 +161,6 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
             </View>
           </View>
 
-          {/* 3. Menu Items List */}
           <View style={styles.menuContainer}>
             <Text style={[styles.sectionLabel, { color: theme.placeholder }]}>GENERAL</Text>
             {menuItems.map((item, index) => (
@@ -172,10 +173,9 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
                 onPress={() => {
                   Haptics.selectionAsync();
                   onClose();
-                  router.push(item.route)
+                  router.push(item.route as any)
                 }}
               >
-                {/* Squaricle Icon Background */}
                 <View style={[styles.iconBox, { backgroundColor: isDarkMode ? `${item.color}20` : `${item.color}15` }]}>
                   <Ionicons name={item.icon as any} size={20} color={item.color} />
                 </View>
@@ -185,7 +185,6 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
             ))}
           </View>
 
-          {/* 4. Footer & Logout */}
           <View style={styles.footer}>
             <View style={[styles.separator, { backgroundColor: borderColor }]} />
             <HapticPressable
@@ -193,14 +192,14 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
                 styles.logoutItem,
                 { opacity: pressed ? 0.7 : 1 }
               ]}
-              onPress={handleLogout}
+              onPress={handleLogoutPress}
             >
               <View style={[styles.iconBox, { backgroundColor: '#fee2e2' }]}>
                 <Ionicons name="log-out" size={20} color="#ef4444" />
               </View>
               <Text style={[styles.menuText, { color: '#ef4444' }]}>Log Out</Text>
             </HapticPressable>
-            <Text style={[styles.version, { color: theme.placeholder }]}>v1.0.2 • Build 2024</Text>
+            <Text style={[styles.version, { color: theme.placeholder }]}>v1.0 • Build 2026</Text>
           </View>
 
         </Animated.View>
@@ -224,7 +223,6 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     borderTopRightRadius: 35,
     borderBottomRightRadius: 35,
-    // Soft Shadow
     shadowColor: '#000',
     shadowOffset: { width: 5, height: 0 },
     shadowOpacity: 0.2,
@@ -236,8 +234,6 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingHorizontal: 24,
   },
-  
-  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -256,8 +252,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  // Profile Card
   profileCard: {
     padding: 16,
     borderRadius: 24,
@@ -271,7 +265,7 @@ const styles = StyleSheet.create({
   avatarContainer: {
     width: 50,
     height: 50,
-    borderRadius: 18, // Squaricle avatar
+    borderRadius: 18,
     backgroundColor: '#228f16',
     alignItems: 'center',
     justifyContent: 'center',
@@ -310,21 +304,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
-  editProfileBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  editProfileText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-
-  // Menu List
   menuContainer: {
     flex: 1,
   },
@@ -358,19 +337,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     letterSpacing: -0.2,
   },
-  badge: {
-    backgroundColor: '#ec4899',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-
-  // Footer
   footer: {
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
   },

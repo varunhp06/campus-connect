@@ -1,15 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   TouchableOpacity,
+  Keyboard,
 } from "react-native";
 import { useTheme } from "./ThemeContext";
-import { router } from "expo-router";
 import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -17,7 +16,7 @@ import {
 import { auth } from "../firebaseConfig";
 import { Ionicons } from "@expo/vector-icons";
 import HapticPressable from "./HapticPressable";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import CustomAlert from "./CustomAlert"; 
 
 export const LoginForm: React.FC = () => {
   const { theme } = useTheme();
@@ -26,34 +25,47 @@ export const LoginForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const validateInputs = () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email.trim() || !password.trim()) {
-      Alert.alert("Validation Error", "Please fill in all fields.");
-      return false;
-    }
-    if (!emailRegex.test(email)) {
-      Alert.alert("Invalid Email", "Please enter a valid email address.");
-      return false;
-    }
-    if (password.length < 6) {
-      Alert.alert(
-        "Weak Password",
-        "Password must be at least 6 characters long."
-      );
-      return false;
-    }
-    return true;
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({
+    title: "",
+    message: "",
+  });
+
+  const showAlert = (title: string, message: string) => {
+    setAlertConfig({ title, message });
+    setAlertVisible(true);
+  };
+
+  const closeAlert = () => {
+    setAlertVisible(false);
   };
 
   const handleLogin = async () => {
-    if (!validateInputs()) return;
+    Keyboard.dismiss();
+    const trimmedEmail = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!trimmedEmail || !password.trim()) {
+      showAlert("Validation Error", "Please fill in all fields.");
+      return;
+    }
+    if (!emailRegex.test(trimmedEmail)) {
+      showAlert("Invalid Email", "Please enter a valid email address.");
+      return;
+    }
+    if (password.length < 6) {
+      showAlert(
+        "Weak Password",
+        "Password must be at least 6 characters long."
+      );
+      return;
+    }
     setIsLoading(true);
 
     try {
       const userCredential = await signInWithEmailAndPassword(
         auth,
-        email,
+        trimmedEmail,
         password
       );
       console.log("User logged in successfully:", userCredential.user.uid);
@@ -78,7 +90,7 @@ export const LoginForm: React.FC = () => {
         default:
           errorMessage = error.message;
       }
-      Alert.alert("Login Failed", errorMessage);
+      showAlert("Login Failed", errorMessage);
       console.log("Login error:", error);
     } finally {
       setIsLoading(false);
@@ -87,13 +99,13 @@ export const LoginForm: React.FC = () => {
 
   const handleForgotPassword = async () => {
     if (!email) {
-      Alert.alert("Reset Password", "Please enter your email address first.");
+      showAlert("Reset Password", "Please enter your email address first.");
       return;
     }
 
     try {
       await sendPasswordResetEmail(auth, email);
-      Alert.alert(
+      showAlert(
         "Password Reset",
         "A password reset link has been sent to your email."
       );
@@ -104,7 +116,7 @@ export const LoginForm: React.FC = () => {
       } else if (error.code === "auth/user-not-found") {
         errorMessage = "No user found with this email.";
       }
-      Alert.alert("Error", errorMessage);
+      showAlert("Error", errorMessage);
     }
   };
 
@@ -195,6 +207,14 @@ export const LoginForm: React.FC = () => {
           <Text style={styles.buttonText}>SIGN IN</Text>
         )}
       </HapticPressable>
+
+      <CustomAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={closeAlert}
+        onConfirm={closeAlert}
+      />
     </View>
   );
 };
