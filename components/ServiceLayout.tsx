@@ -53,7 +53,6 @@ export const ServiceLayout: React.FC<ServiceLayoutProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* HEADER (Static - No Animation) */}
       {showTitle && title && (
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.text }]}>
@@ -62,8 +61,6 @@ export const ServiceLayout: React.FC<ServiceLayoutProps> = ({
         </View>
       )}
 
-      {/* CHILDREN/BUTTONS (Animated) */}
-      {/* We replaced View with Animated.View here */}
       <Animated.View 
         style={[
           styles.childrenContainer, 
@@ -76,7 +73,6 @@ export const ServiceLayout: React.FC<ServiceLayoutProps> = ({
         {children}
       </Animated.View>
 
-      {/* BOTTOM IMAGE (Static - No Animation) */}
       {showBottomImage && bottomImage && (
         <View style={styles.bottomImageContainer}>
           <Image
@@ -103,7 +99,6 @@ const styles = StyleSheet.create({
   },
   childrenContainer: {
     flex: 1,
-    // Ensure padding isn't clipped during animation if needed
   },
   bottomImageContainer: {
     position: 'absolute',

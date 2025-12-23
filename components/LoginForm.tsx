@@ -84,28 +84,40 @@ export const LoginForm: React.FC = () => {
   const validateInputs = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.trim() || !password.trim()) {
-      showToast("Please fill in all fields", "warning");
       return false;
     }
     if (!emailRegex.test(email)) {
-      showToast("Please enter a valid email address", "warning");
       return false;
     }
     if (password.length < 6) {
-      showToast("Password must be at least 6 characters long", "warning");
       return false;
     }
     return true;
   };
 
   const handleLogin = async () => {
-    if (!validateInputs()) return;
+    Keyboard.dismiss();
+    const trimmedEmail = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!trimmedEmail || !password.trim()) {
+      showToast("Please fill in all fields", "warning");
+      return;
+    }
+    if (!emailRegex.test(trimmedEmail)) {
+      showToast("Please enter a valid email address", "warning");
+      return;
+    }
+    if (password.length < 6) {
+      showToast("Password must be at least 6 characters long", "warning");
+      return;
+    }
     setIsLoading(true);
 
     try {
       const userCredential = await signInWithEmailAndPassword(
         auth,
-        email,
+        trimmedEmail,
         password
       );
       console.log("User logged in successfully:", userCredential.user.uid);

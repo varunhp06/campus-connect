@@ -407,7 +407,6 @@ export const HomeContent: React.FC = () => {
           )}
         </View>
 
-        {/* Button Row with View All and Manage Events */}
         <View style={styles.buttonRow}>
           <HapticPressable
             style={({ pressed }) => [

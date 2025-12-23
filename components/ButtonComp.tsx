@@ -21,7 +21,7 @@ interface Utility {
   title: string;
   description: string;
   status?: string;
-  params?: any; // Add this line
+  params?: any; 
 }
 
 interface Theme {

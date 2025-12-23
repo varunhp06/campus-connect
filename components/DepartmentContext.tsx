@@ -1,4 +1,3 @@
-// contexts/DepartmentContext.tsx
 import React, { createContext, useContext, useState } from 'react';
 import { AdministrationMember } from '@/components/data/administration';
 

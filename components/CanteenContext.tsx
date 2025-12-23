@@ -14,7 +14,7 @@ export interface CanteenCartItem {
   name: string;
   price: number;
   quantity: number;
-  shopId: string;      // ensures cart filters per shop if needed
+  shopId: string;      
   addedAt: number;
   img : string
 }

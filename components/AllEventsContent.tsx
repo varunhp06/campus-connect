@@ -23,7 +23,6 @@ import { ServiceLayout } from './ServiceLayout';
 import { useTheme } from './ThemeContext';
 import { useToast } from './ToastContext';
 
-// Enable LayoutAnimation for Android
 if (
   Platform.OS === 'android' &&
   UIManager.setLayoutAnimationEnabledExperimental
@@ -32,7 +31,7 @@ if (
 }
 
 export const AllEventsContent: React.FC = () => {
-  const router = useRouter(); // <--- 2. Initialize Router
+  const router = useRouter(); 
   const { theme, isDarkMode } = useTheme();
   const { showToast } = useToast();
   const [selectedTab, setSelectedTab] = useState<'SPORTS' | 'CULT' | 'TECH' | 'ALL'>('SPORTS');
@@ -42,15 +41,35 @@ export const AllEventsContent: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Animation Value for the List Opacity
   const listOpacity = useRef(new Animated.Value(1)).current;
 
-  // Modernized Palette
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    confirmText: 'Okay',
+    cancelText: 'Cancel',
+    onConfirm: () => {},
+    confirmButtonColor: '#007AFF'
+  });
+
+  const showAlert = (title: string, message: string, isError = false) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      confirmText: 'Okay',
+      cancelText: 'Close',
+      confirmButtonColor: isError ? '#ef4444' : '#007AFF',
+      onConfirm: () => setAlertConfig(prev => ({ ...prev, visible: false })),
+    });
+  };
+
   const tabColors: Record<string, string> = {
-    SPORTS: '#10B981', // Emerald
-    CULT: '#F43F5E',   // Rose
-    TECH: '#3B82F6',   // Blue
-    ALL: '#F59E0B',    // Amber
+    SPORTS: '#10B981', 
+    CULT: '#F43F5E',   
+    TECH: '#3B82F6',   
+    ALL: '#F59E0B',    
   };
 
   const loadActivities = async () => {
@@ -71,7 +90,6 @@ export const AllEventsContent: React.FC = () => {
     loadActivities();
   }, []);
 
-  // --- Smooth Tab Switcher Logic ---
   const handleTabChange = (tab: typeof selectedTab) => {
     if (selectedTab === tab) return;
 
@@ -216,7 +234,7 @@ export const AllEventsContent: React.FC = () => {
         <Text style={[styles.errorText, { color: theme.text }]}>Oops! {error}</Text>
         <TouchableOpacity style={styles.retryBtn} onPress={loadActivities}>
              <Text style={styles.retryText}>Try Again</Text>
-        </TouchableOpacity>
+        </HapticPressable>
       </View>
     );
   }
@@ -235,10 +253,20 @@ export const AllEventsContent: React.FC = () => {
     >
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         
-        {/* Control Row */}
+        <CustomAlert 
+          visible={alertConfig.visible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          onConfirm={alertConfig.onConfirm}
+          onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
+          confirmText={alertConfig.confirmText}
+          cancelText={alertConfig.cancelText}
+          confirmButtonColor={alertConfig.confirmButtonColor}
+        />
+
         <View style={styles.controlRow}>
             <View style={[styles.togglePill, { backgroundColor: inactivePillBg }]}>
-                <TouchableOpacity 
+                <HapticPressable 
                     style={[styles.toggleOption, showUpcoming && styles.activeToggle]}
                     onPress={() => handleToggleUpcoming(true)}
                 >
@@ -246,8 +274,8 @@ export const AllEventsContent: React.FC = () => {
                         styles.toggleText, 
                         { color: showUpcoming ? activePillColor : theme.placeholder }
                     ]}>Upcoming</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
+                </HapticPressable>
+                <HapticPressable 
                     style={[styles.toggleOption, !showUpcoming && styles.activeToggle]}
                     onPress={() => handleToggleUpcoming(false)}
                 >
@@ -255,15 +283,15 @@ export const AllEventsContent: React.FC = () => {
                         styles.toggleText, 
                         { color: !showUpcoming ? activePillColor : theme.placeholder }
                     ]}>All</Text>
-                </TouchableOpacity>
+                </HapticPressable>
             </View>
 
-            <TouchableOpacity 
+            <HapticPressable 
                 style={[styles.pdfBtn, { backgroundColor: inactivePillBg }]} 
                 onPress={generatePDF}
             >
                 <Ionicons name="download-outline" size={18} color={theme.text} />
-            </TouchableOpacity>
+            </HapticPressable>
         </View>
 
         {/* Filters */}
@@ -299,7 +327,6 @@ export const AllEventsContent: React.FC = () => {
             </ScrollView>
         </View>
 
-        {/* Event List */}
         <Animated.ScrollView 
             style={[styles.scrollView, { opacity: listOpacity }]} 
             contentContainerStyle={styles.scrollContent}
@@ -322,7 +349,6 @@ export const AllEventsContent: React.FC = () => {
               return (
                 <HapticPressable
                   key={item.id}
-                  // 3. Navigate to dynamic route on press
                   onPress={() => {
                     router.push(`/(app)/eventinfo/${item.id}`); 
                   }}
@@ -336,16 +362,13 @@ export const AllEventsContent: React.FC = () => {
                     }
                   ]}
                 >
-                  {/* Left: Date */}
                   <View style={styles.dateColumn}>
                     <Text style={[styles.dateText, { color: theme.text }]}>{item.date}</Text>
                     <Text style={[styles.monthText, { color: accentColor }]}>{item.month}</Text>
                   </View>
 
-                  {/* Vertical Divider */}
                   <View style={[styles.divider, { backgroundColor: cardBorder }]} />
 
-                  {/* Right: Content */}
                   <View style={styles.contentColumn}>
                     <View style={styles.cardHeader}>
                         <Text style={[
