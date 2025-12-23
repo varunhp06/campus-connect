@@ -1,22 +1,22 @@
-import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Animated,
-  Dimensions,
-  PanResponder,
-  Alert,
-  Easing,
-  Platform,
-} from 'react-native';
-import { useTheme } from './ThemeContext';
-import { auth } from '../firebaseConfig';
-import { signOut } from 'firebase/auth';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
+import { signOut } from 'firebase/auth';
+import React, { useEffect, useRef } from 'react';
+import {
+    Animated,
+    Dimensions,
+    Easing,
+    PanResponder,
+    Platform,
+    StyleSheet,
+    Text,
+    View
+} from 'react-native';
+import { auth } from '../firebaseConfig';
+import { useDialog } from './DialogContext';
 import HapticPressable from './HapticPressable';
+import { useTheme } from './ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.65; // Slightly wider for better breathing room
@@ -28,6 +28,7 @@ interface SideDrawerProps {
 
 export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
   const { theme, isDarkMode } = useTheme();
+  const { showDialog } = useDialog();
   // Animation refs
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -88,18 +89,22 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
   ).current;
 
   const handleLogout = async () => {
-    Alert.alert('Log Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Log Out',
-        style: 'destructive',
-        onPress: async () => {
-          await signOut(auth);
-          onClose();
-          router.replace('/LoginScreen');
+    showDialog({
+      title: 'Log Out',
+      message: 'Are you sure you want to sign out?',
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            await signOut(auth);
+            onClose();
+            router.replace('/LoginScreen');
+          },
         },
-      },
-    ]);
+      ]
+    });
   };
 
   const menuItems = [

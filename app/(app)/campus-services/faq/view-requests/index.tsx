@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, Modal, ScrollView, Alert } from 'react-native';
-import { ThemedLayout } from '@/components/ThemedLayout';
+import { useDialog } from '@/components/DialogContext';
+import HapticPressable from '@/components/HapticPressable';
 import { ServiceLayout } from '@/components/ServiceLayout';
 import { useTheme } from '@/components/ThemeContext';
-import HapticPressable from '@/components/HapticPressable';
-import { Ionicons } from '@expo/vector-icons';
+import { ThemedLayout } from '@/components/ThemedLayout';
+import { useToast } from '@/components/ToastContext';
 import { db } from '@/firebaseConfig';
-import { collection, getDocs, doc, deleteDoc, addDoc } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
+import { addDoc, collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import { FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 interface FAQRequest {
   id: string;
@@ -17,6 +19,8 @@ interface FAQRequest {
 
 export default function ViewRequests() {
   const { theme } = useTheme();
+  const { showToast } = useToast();
+  const { showDialog } = useDialog();
   const [requests, setRequests] = useState<FAQRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [answerModalVisible, setAnswerModalVisible] = useState(false);
@@ -38,7 +42,7 @@ export default function ViewRequests() {
       setRequests(requestsData.sort((a, b) => b.requestedAt?.seconds - a.requestedAt?.seconds));
     } catch (error) {
       console.error('Error loading requests:', error);
-      Alert.alert('Error', 'Failed to load FAQ requests');
+      showToast('Failed to load FAQ requests', 'error');
     } finally {
       setLoading(false);
     }
@@ -52,7 +56,7 @@ export default function ViewRequests() {
 
   const handleSubmitAnswer = async () => {
     if (!selectedRequest || !answer.trim()) {
-      Alert.alert('Error', 'Please provide an answer');
+      showToast('Please provide an answer', 'warning');
       return;
     }
 
@@ -73,20 +77,20 @@ export default function ViewRequests() {
       setSelectedRequest(null);
       setAnswer('');
       
-      Alert.alert('Success', 'FAQ answered and published successfully');
+      showToast('FAQ answered and published successfully', 'success');
     } catch (error) {
       console.error('Error answering request:', error);
-      Alert.alert('Error', 'Failed to answer request. Please try again.');
+      showToast('Failed to answer request. Please try again.', 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteRequest = (request: FAQRequest) => {
-    Alert.alert(
-      'Delete Request',
-      'Are you sure you want to delete this request?',
-      [
+    showDialog({
+      title: 'Delete Request',
+      message: 'Are you sure you want to delete this request?',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
@@ -95,15 +99,15 @@ export default function ViewRequests() {
             try {
               await deleteDoc(doc(db, 'faqRequests', request.id));
               setRequests(requests.filter(r => r.id !== request.id));
-              Alert.alert('Success', 'Request deleted successfully');
+              showToast('Request deleted successfully', 'success');
             } catch (error) {
               console.error('Error deleting request:', error);
-              Alert.alert('Error', 'Failed to delete request');
+              showToast('Failed to delete request', 'error');
             }
           }
         }
       ]
-    );
+    });
   };
 
   const formatDate = (timestamp: any) => {

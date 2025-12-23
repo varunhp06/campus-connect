@@ -1,35 +1,36 @@
-import {
-  View,
-  Text,
-  FlatList,
-  RefreshControl,
-  ActivityIndicator,
-  StyleSheet,
-  TouchableOpacity,
-  LayoutAnimation,
-  Platform,
-  UIManager,
-  Animated,
-  Linking,
-  Alert,
-  Modal,
-  ScrollView, // Import ScrollView
-} from "react-native";
-import React, { useState, useEffect, useMemo, useRef, JSX } from "react";
-import { Ionicons } from "@expo/vector-icons";
-import { ThemedLayout } from "@/components/ThemedLayout";
 import { ServiceLayout } from "@/components/ServiceLayout";
+import { ThemedLayout } from "@/components/ThemedLayout";
+import { useToast } from "@/components/ToastContext";
+import { auth, db } from "@/firebaseConfig";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import {
-  collection,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  doc,
-  Timestamp,
-  writeBatch,
+    collection,
+    doc,
+    getDocs,
+    query,
+    Timestamp,
+    updateDoc,
+    where,
+    writeBatch,
 } from "firebase/firestore";
-import { db } from "@/firebaseConfig";
+import React, { JSX, useEffect, useMemo, useRef, useState } from "react";
+import {
+    ActivityIndicator,
+    Animated,
+    FlatList,
+    LayoutAnimation,
+    Linking,
+    Modal,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    UIManager,
+    View
+} from "react-native";
 
 // Enable LayoutAnimation
 if (
@@ -101,8 +102,48 @@ const OrdersScreen: React.FC = () => {
   const [orderToReject, setOrderToReject] = useState<Order | null>(null);
   const [rejectLoading, setRejectLoading] = useState(false);
 
-  const userId: string = "uMs7DQkbWE4jLLnUHxYQ";
-  const isVendor: boolean = true;
+  const { showToast } = useToast();
+  const router = useRouter();
+
+  // Get authenticated user and verify vendor status
+  const currentUser = auth.currentUser;
+  const [userId, setUserId] = useState<string>("");
+  const [isVendor, setIsVendor] = useState<boolean>(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // Check vendor authentication on mount
+  useEffect(() => {
+    const checkVendorStatus = async () => {
+      if (!currentUser) {
+        showToast("Please log in to access vendor dashboard", "error");
+        router.push("/LoginScreen");
+        return;
+      }
+
+      try {
+        // Get custom claims to check vendor status
+        const idTokenResult = await currentUser.getIdTokenResult();
+        const isVendorUser = idTokenResult.claims.vendor === true;
+        
+        if (!isVendorUser) {
+          showToast("Access denied: Vendor privileges required", "error");
+          router.back();
+          return;
+        }
+
+        setIsVendor(true);
+        setUserId(currentUser.uid);
+      } catch (error) {
+        console.error("Error checking vendor status:", error);
+        showToast("Authentication error", "error");
+        router.push("/LoginScreen");
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+
+    checkVendorStatus();
+  }, [currentUser]);
 
   // --- Helpers ---
   const formatCurrency = (amount: number): string =>
@@ -145,7 +186,7 @@ const OrdersScreen: React.FC = () => {
     if (phoneNumber) {
       Linking.openURL(`tel:${phoneNumber}`);
     } else {
-      Alert.alert("No Phone", "No phone number available for this order.");
+      showToast("No phone number available for this order", "error");
     }
   };
 
@@ -264,7 +305,7 @@ const OrdersScreen: React.FC = () => {
       await fetchOrders();
     } catch (error) {
       console.error("Error rejecting order:", error);
-      Alert.alert("Error", "Could not reject order.");
+      showToast("Could not reject order", "error");
     } finally {
       setRejectLoading(false);
     }
@@ -560,6 +601,27 @@ const OrdersScreen: React.FC = () => {
         </ServiceLayout>
       </ThemedLayout>
     );
+  }
+
+  // Show loading while checking authentication
+  if (checkingAuth) {
+    return (
+      <ThemedLayout>
+        <ServiceLayout icon="pizza" title="Orders">
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#FF6B35" />
+            <Text style={{ marginTop: 16, color: "#64748B" }}>
+              Verifying vendor access...
+            </Text>
+          </View>
+        </ServiceLayout>
+      </ThemedLayout>
+    );
+  }
+
+  // Don't render if not a vendor (should have been redirected already)
+  if (!isVendor) {
+    return null;
   }
 
   return (

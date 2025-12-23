@@ -1,29 +1,31 @@
 import { CanteenCartItem, useCanteen } from "@/components/CanteenContext";
+import { useDialog } from "@/components/DialogContext";
 import { ServiceLayout } from "@/components/ServiceLayout";
 import { useTheme } from "@/components/ThemeContext";
 import { ThemedLayout } from "@/components/ThemedLayout";
+import { useToast } from "@/components/ToastContext";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import {
-    addDoc,
-    collection,
-    getDocs,
-    onSnapshot,
-    query,
-    serverTimestamp,
-    where,
+  addDoc,
+  collection,
+  getDocs,
+  onSnapshot,
+  query,
+  serverTimestamp,
+  where,
 } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
-import { db } from "../../../../../../firebaseConfig";
+import { auth, db } from "../../../../../../firebaseConfig";
 
 type Order = {
   id: string;
@@ -54,7 +56,21 @@ const Index = () => {
     getCartItems,
   } = useCanteen();
 
-  const userId = "user_123"; // Replace with actual user ID from context
+  const { showToast } = useToast();
+  const { showDialog } = useDialog();
+  const router = useRouter();
+
+  // Get authenticated user ID
+  const currentUser = auth.currentUser;
+  const userId = currentUser?.uid || "";
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!currentUser) {
+      showToast("Please log in to access your cart", "error");
+      router.push("/LoginScreen");
+    }
+  }, [currentUser]);
 
   // Load pending orders
   useEffect(() => {
@@ -122,7 +138,7 @@ const Index = () => {
       setOrders(ordersList);
     } catch (error) {
       console.log("Error loading orders:", error);
-      Alert.alert("Error", "Failed to load orders");
+      showToast("Failed to load orders", "error");
     } finally {
       setLoadingOrders(false);
     }
@@ -143,25 +159,33 @@ const Index = () => {
   };
 
   const handleRemoveItem = (itemId: string, itemName: string) => {
-    Alert.alert("Remove Item", `Remove ${itemName} from cart?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-        onPress: () => removeFromCart(itemId),
-      },
-    ]);
+    showDialog({
+      title: 'Remove Item',
+      message: `Remove ${itemName} from cart?`,
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => removeFromCart(itemId),
+        },
+      ],
+    });
   };
 
   const handleClearCart = () => {
-    Alert.alert("Clear Cart", "Remove all items from cart?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Clear All",
-        style: "destructive",
-        onPress: () => clearCart(),
-      },
-    ]);
+    showDialog({
+      title: 'Clear Cart',
+      message: 'Remove all items from cart?',
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: () => clearCart(),
+        },
+      ],
+    });
   };
 
   const placeOrder = async () => {
@@ -170,13 +194,13 @@ const Index = () => {
     const cartItems = getCartItems();
     const shopId = cartItems[0]?.shopId || "";
 
-    Alert.alert(
-      "Place Order",
-      `Total: ₹${getTotalPrice().toFixed(2)}\n\nConfirm your order?`,
-      [
-        { text: "Cancel", style: "cancel" },
+    showDialog({
+      title: 'Place Order',
+      message: `Total: ₹${getTotalPrice().toFixed(2)}\n\nConfirm your order?`,
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: "Confirm",
+          text: 'Confirm',
           onPress: async () => {
             try {
               setOrdering(true);
@@ -190,46 +214,26 @@ const Index = () => {
                 status: "pending",
               });
 
-              Alert.alert(
-                "Success",
-                "Your order has been placed! Waiting for shop approval.",
-                [
-                  {
-                    text: "OK",
-                    onPress: () => {
-                      clearCart();
-                      setActiveTab("orders");
-                    },
-                  },
-                ]
-              );
+              showToast("Order placed! Waiting for shop approval.", "success");
+              clearCart();
+              setActiveTab("orders");
             } catch (error) {
               console.log("Error placing order:", error);
-              Alert.alert("Error", "Failed to place order. Please try again.");
+              showToast("Failed to place order. Please try again.", "error");
             } finally {
               setOrdering(false);
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const renderCartItem = (item: CanteenCartItem) => {
     return (
       <View
         key={item.id}
-        style={[
-          styles.cartItem,
-          {
-            backgroundColor: isDarkMode
-              ? "rgba(30, 41, 59, 0.8)"
-              : "rgba(255, 255, 255, 0.9)",
-            borderColor: isDarkMode
-              ? "rgba(255, 255, 255, 0.1)"
-              : "rgba(0, 0, 0, 0.05)",
-          },
-        ]}
+        style={[styles.cartItem, { backgroundColor: theme.inputBackground }]}
       >
         {/* Item Image with Overlay */}
         <View style={styles.imageContainer}>
@@ -251,20 +255,12 @@ const Index = () => {
         <View style={styles.itemDetails}>
           <View style={styles.textContainer}>
             <Text
-              style={[
-                styles.itemName,
-                { color: isDarkMode ? "#F8FAFC" : "#0F172A" },
-              ]}
+              style={[styles.itemName, { color: theme.primaryText }]}
               numberOfLines={2}
             >
               {item.name}
             </Text>
-            <Text
-              style={[
-                styles.itemPrice,
-                { color: isDarkMode ? "#00b3ffff" : "#006efdff" },
-              ]}
-            >
+            <Text style={styles.itemPrice}>
               ₹{item.price.toFixed(2)}
             </Text>
           </View>
@@ -272,70 +268,30 @@ const Index = () => {
           {/* Quantity Controls */}
           <View style={styles.quantityContainer}>
             <TouchableOpacity
-              style={[
-                styles.quantityBtn,
-                {
-                  backgroundColor: isDarkMode
-                    ? "rgba(51, 65, 85, 0.6)"
-                    : "rgba(241, 245, 249, 0.8)",
-                  borderColor: isDarkMode
-                    ? "rgba(100, 116, 139, 0.3)"
-                    : "rgba(203, 213, 225, 0.5)",
-                },
-              ]}
+              style={styles.quantityBtn}
               onPress={() => handleDecrement(item.id)}
             >
               <Ionicons
                 name={item.quantity === 1 ? "trash-outline" : "remove"}
                 size={16}
-                color={
-                  item.quantity === 1
-                    ? "#EF4444"
-                    : isDarkMode
-                    ? "#94A3B8"
-                    : "#64748B"
-                }
+                color={item.quantity === 1 ? "#EF4444" : theme.primaryText}
               />
             </TouchableOpacity>
 
-            <View
-              style={[
-                styles.quantityDisplay,
-                {
-                  backgroundColor: isDarkMode
-                    ? "rgba(60, 83, 136, 0.4)"
-                    : "rgba(248, 250, 252, 0.8)",
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.quantityText,
-                  { color: isDarkMode ? "#0095ffff" : "#006effff" },
-                ]}
-              >
+            <View style={styles.quantityDisplay}>
+              <Text style={[styles.quantityText, { color: theme.primaryText }]}>
                 {item.quantity}
               </Text>
             </View>
 
             <TouchableOpacity
-              style={[
-                styles.quantityBtn,
-                {
-                  backgroundColor: isDarkMode
-                    ? "rgba(51, 65, 85, 0.6)"
-                    : "rgba(241, 245, 249, 0.8)",
-                  borderColor: isDarkMode
-                    ? "rgba(100, 116, 139, 0.3)"
-                    : "rgba(203, 213, 225, 0.5)",
-                },
-              ]}
+              style={styles.quantityBtn}
               onPress={() => handleIncrement(item.id)}
             >
               <Ionicons
                 name="add"
                 size={16}
-                color={isDarkMode ? "#94A3B8" : "#64748B"}
+                color={theme.primaryText}
               />
             </TouchableOpacity>
           </View>
@@ -344,39 +300,13 @@ const Index = () => {
         {/* Item Total & Delete */}
         <View style={styles.itemActions}>
           <View style={styles.totalContainer}>
-            <Text
-              style={[
-                styles.totalLabel,
-                { color: isDarkMode ? "#94A3B8" : "#64748B" },
-              ]}
-            >
+            <Text style={[styles.totalLabel, { color: theme.secondaryText }]}>
               Total
             </Text>
-            <Text
-              style={[
-                styles.itemTotal,
-                { color: isDarkMode ? "#F8FAFC" : "#0F172A" },
-              ]}
-            >
+            <Text style={[styles.itemTotal, { color: theme.primaryText }]}>
               ₹{(item.price * item.quantity).toFixed(2)}
             </Text>
           </View>
-          <TouchableOpacity
-            style={[
-              styles.deleteBtn,
-              {
-                backgroundColor: isDarkMode
-                  ? "rgba(239, 68, 68, 0.15)"
-                  : "rgba(239, 68, 68, 0.08)",
-                borderColor: isDarkMode
-                  ? "rgba(239, 68, 68, 0.3)"
-                  : "rgba(239, 68, 68, 0.2)",
-              },
-            ]}
-            onPress={() => handleRemoveItem(item.id, item.name)}
-          >
-            <Ionicons name="trash-outline" size={18} color="#EF4444" />
-          </TouchableOpacity>
         </View>
       </View>
     );
@@ -396,7 +326,7 @@ const Index = () => {
         case "preparing":
           return "#10B981";
         default:
-          return "#b73f3fff";
+          return "#EF4444";
       }
     };
 
@@ -414,28 +344,15 @@ const Index = () => {
     return (
       <View
         key={order.id}
-        style={[
-          styles.orderCard,
-          { backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF" },
-        ]}
+        style={[styles.orderCard, { backgroundColor: theme.inputBackground }]}
       >
         {/* Order Header */}
         <View style={styles.orderHeader}>
           <View style={styles.orderHeaderLeft}>
-            <Text
-              style={[
-                styles.orderId,
-                { color: isDarkMode ? "#94A3B8" : "#64748B" },
-              ]}
-            >
+            <Text style={[styles.orderId, { color: theme.secondaryText }]}>
               Order #{order.id.slice(-6).toUpperCase()}
             </Text>
-            <Text
-              style={[
-                styles.orderDate,
-                { color: isDarkMode ? "#64748B" : "#94A3B8" },
-              ]}
-            >
+            <Text style={[styles.orderDate, { color: theme.secondaryText }]}>
               {formatDate(order.timestamp)}
             </Text>
           </View>
@@ -465,20 +382,10 @@ const Index = () => {
         <View style={styles.orderItems}>
           {order.items.map((item, index) => (
             <View key={index} style={styles.orderItemRow}>
-              <Text
-                style={[
-                  styles.orderItemName,
-                  { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
-                ]}
-              >
+              <Text style={[styles.orderItemName, { color: theme.primaryText }]}>
                 {item.quantity}x {item.name}
               </Text>
-              <Text
-                style={[
-                  styles.orderItemPrice,
-                  { color: isDarkMode ? "#94A3B8" : "#64748B" },
-                ]}
-              >
+              <Text style={[styles.orderItemPrice, { color: theme.secondaryText }]}>
                 ₹{(item.price * item.quantity).toFixed(2)}
               </Text>
             </View>
@@ -486,26 +393,11 @@ const Index = () => {
         </View>
 
         {/* Order Total */}
-        <View
-          style={[
-            styles.orderFooter,
-            { borderTopColor: isDarkMode ? "#334155" : "#E2E8F0" },
-          ]}
-        >
-          <Text
-            style={[
-              styles.orderTotalLabel,
-              { color: isDarkMode ? "#94A3B8" : "#64748B" },
-            ]}
-          >
+        <View style={[styles.orderFooter, { borderTopColor: theme.inputBorder }]}>
+          <Text style={[styles.orderTotalLabel, { color: theme.secondaryText }]}>
             Total Amount
           </Text>
-          <Text
-            style={[
-              styles.orderTotalValue,
-              { color: isDarkMode ? "#00a6ffff" : "#00a6ffff" },
-            ]}
-          >
+          <Text style={[styles.orderTotalValue, { color: theme.primaryText }]}>
             ₹{order.total.toFixed(2)}
           </Text>
         </View>
@@ -527,43 +419,25 @@ const Index = () => {
       <ServiceLayout icon={icon} title={title} showTitle={true}>
         <View style={styles.container}>
           {/* Tab Selector */}
-          <View
-            style={[
-              styles.tabContainer,
-              { backgroundColor: isDarkMode ? "#1E293B" : "#F8FAFC" },
-            ]}
-          >
+          <View style={[styles.tabContainer, { backgroundColor: theme.navbarBackground }]}>
             <TouchableOpacity
               style={[
                 styles.tab,
                 activeTab === "cart" && styles.activeTab,
-                activeTab === "cart" && { backgroundColor: "#4281eeff" },
+                activeTab === "cart" && { backgroundColor: "#4281ee" },
               ]}
               onPress={() => setActiveTab("cart")}
             >
               <Ionicons
                 name="cart"
                 size={20}
-                color={
-                  activeTab === "cart"
-                    ? "#FFFFFF"
-                    : isDarkMode
-                    ? "#94A3B8"
-                    : "#64748B"
-                }
+                color={activeTab === "cart" ? "#FFFFFF" : theme.secondaryText}
               />
               <Text
                 style={[
                   styles.tabText,
                   activeTab === "cart" && styles.activeTabText,
-                  {
-                    color:
-                      activeTab === "cart"
-                        ? "#FFFFFF"
-                        : isDarkMode
-                        ? "#94A3B8"
-                        : "#64748B",
-                  },
+                  { color: activeTab === "cart" ? "#FFFFFF" : theme.secondaryText },
                 ]}
               >
                 Cart
@@ -579,33 +453,20 @@ const Index = () => {
               style={[
                 styles.tab,
                 activeTab === "orders" && styles.activeTab,
-                activeTab === "orders" && { backgroundColor: "#4281eeff" },
+                activeTab === "orders" && { backgroundColor: "#4281ee" },
               ]}
               onPress={() => setActiveTab("orders")}
             >
               <Ionicons
                 name="receipt"
                 size={20}
-                color={
-                  activeTab === "orders"
-                    ? "#FFFFFF"
-                    : isDarkMode
-                    ? "#94A3B8"
-                    : "#64748B"
-                }
+                color={activeTab === "orders" ? "#FFFFFF" : theme.secondaryText}
               />
               <Text
                 style={[
                   styles.tabText,
                   activeTab === "orders" && styles.activeTabText,
-                  {
-                    color:
-                      activeTab === "orders"
-                        ? "#FFFFFF"
-                        : isDarkMode
-                        ? "#94A3B8"
-                        : "#64748B",
-                  },
+                  { color: activeTab === "orders" ? "#FFFFFF" : theme.secondaryText },
                 ]}
               >
                 Orders
@@ -631,28 +492,15 @@ const Index = () => {
                   >
                     <Ionicons name="cart-outline" size={64} color="#006de9ff" />
                   </View>
-                  <Text
-                    style={[
-                      styles.emptyTitle,
-                      { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
-                    ]}
-                  >
+                  <Text style={[styles.emptyTitle, { color: theme.primaryText }]}>
                     Your Cart is Empty
                   </Text>
-                  <Text
-                    style={[
-                      styles.emptySubtitle,
-                      { color: isDarkMode ? "#64748B" : "#94A3B8" },
-                    ]}
-                  >
+                  <Text style={[styles.emptySubtitle, { color: theme.secondaryText }]}>
                     Add items to your cart to see them here.
                   </Text>
                 </View>
               ) : (
                 <>
-                  
-
-                  {/* Cart Items List */}
                   <ScrollView
                     style={styles.scrollView}
                     contentContainerStyle={styles.scrollContent}
@@ -665,69 +513,37 @@ const Index = () => {
                   <View
                     style={[
                       styles.cartSummaryBar,
-                      { backgroundColor: isDarkMode ? "#0F172A" : "#FFFFFF" },
+                      { backgroundColor: theme.inputBackground },
                     ]}
                   >
                     <View style={styles.summaryDetails}>
                       <View style={styles.summaryRow}>
-                        <Text
-                          style={[
-                            styles.summaryLabel,
-                            { color: isDarkMode ? "#94A3B8" : "#64748B" },
-                          ]}
-                        >
+                        <Text style={[styles.summaryLabel, { color: theme.secondaryText }]}>
                           Subtotal
                         </Text>
-                        <Text
-                          style={[
-                            styles.summaryValue,
-                            { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
-                          ]}
-                        >
+                        <Text style={[styles.summaryValue, { color: theme.primaryText }]}>
                           ₹{getTotalPrice().toFixed(2)}
                         </Text>
                       </View>
                       <View style={styles.summaryRow}>
-                        <Text
-                          style={[
-                            styles.summaryLabel,
-                            { color: isDarkMode ? "#94A3B8" : "#64748B" },
-                          ]}
-                        >
+                        <Text style={[styles.summaryLabel, { color: theme.secondaryText }]}>
                           Delivery Fee
                         </Text>
-                        <Text
-                          style={[
-                            styles.summaryValue,
-                            { color: isDarkMode ? "#00a6ffff" : "#0055ffff" },
-                          ]}
-                        >
+                        <Text style={[styles.summaryValue, { color: "#16A34A" }]}>
                           Free
                         </Text>
                       </View>
                       <View
                         style={[
                           styles.divider,
-                          {
-                            backgroundColor: isDarkMode ? "#334155" : "#E2E8F0",
-                          },
+                          { backgroundColor: theme.inputBorder },
                         ]}
                       />
                       <View style={styles.summaryRow}>
-                        <Text
-                          style={[
-                            styles.totalLabel,
-                            { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
-                          ]}
-                        >
+                        <Text style={[styles.totalLabel, { color: theme.primaryText }]}>
                           Total
                         </Text>
-                        <Text
-                          style={[
-                            styles.totalValue,
-                            { color: isDarkMode ? "#1692ffff" : "#006effff" },
-                          ]}
-                        >
+                        <Text style={[styles.totalValue, { color: "#006eff" }]}>
                           ₹{getTotalPrice().toFixed(2)}
                         </Text>
                       </View>
@@ -768,12 +584,7 @@ const Index = () => {
               {loadingOrders ? (
                 <View style={styles.centerContainer}>
                   <ActivityIndicator size="large" color="#00b3ffff" />
-                  <Text
-                    style={[
-                      styles.loadingText,
-                      { color: isDarkMode ? "#94A3B8" : "#64748B" },
-                    ]}
-                  >
+                  <Text style={[styles.loadingText, { color: theme.secondaryText }]}>
                     Loading orders...
                   </Text>
                 </View>
@@ -791,20 +602,10 @@ const Index = () => {
                       color="#009dffff"
                     />
                   </View>
-                  <Text
-                    style={[
-                      styles.emptyTitle,
-                      { color: isDarkMode ? "#F1F5F9" : "#0F172A" },
-                    ]}
-                  >
+                  <Text style={[styles.emptyTitle, { color: theme.primaryText }]}>
                     No Pending Orders
                   </Text>
-                  <Text
-                    style={[
-                      styles.emptySubtitle,
-                      { color: isDarkMode ? "#64748B" : "#94A3B8" },
-                    ]}
-                  >
+                  <Text style={[styles.emptySubtitle, { color: theme.secondaryText }]}>
                     Your pending orders will appear here.
                   </Text>
                 </View>
@@ -861,7 +662,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   activeTab: {
-    shadowColor: "#1072b9ff",
+    shadowColor: "#1072b9",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -890,42 +691,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
   },
-  cartHeader: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    padding: 16,
-    marginHorizontal: 16,
-    borderRadius: 16,
-  },
-  headerLeft: {
-    flex: 1,
-  },
-  itemCountBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    alignSelf: "flex-start",
-  },
-  itemCountText: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  clearButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  clearButtonText: {
-    color: "#EF4444",
-    fontSize: 14,
-    fontWeight: "600",
-  },
   scrollView: {
     flex: 1,
   },
@@ -942,13 +707,12 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 20,
     marginBottom: 12,
-    borderWidth: 1,
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   imageContainer: {
     position: "relative",
@@ -958,63 +722,58 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 14,
+    backgroundColor: "#f1f5f9",
   },
   quantityOverlay: {
     position: "absolute",
     top: -6,
     right: -6,
-    backgroundColor: "#188cffda",
+    backgroundColor: "#2563EB",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 10,
-    shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 3,
-    minWidth: 30,
+    minWidth: 24,
     alignItems: "center",
   },
   quantityOverlayText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "800",
   },
   itemDetails: {
     flex: 1,
     justifyContent: "space-between",
+    gap: 8,
   },
   textContainer: {
-    marginBottom: 12,
+    marginBottom: 4,
   },
   itemName: {
     fontSize: 16,
     fontWeight: "700",
-    marginBottom: 6,
+    marginBottom: 4,
     lineHeight: 20,
   },
   itemPrice: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
+    color: "#2563EB",
   },
   quantityContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 12,
   },
   quantityBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: "#F1F5F9",
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
   },
   quantityDisplay: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    minWidth: 36,
+    minWidth: 20,
     alignItems: "center",
   },
   quantityText: {
@@ -1023,25 +782,20 @@ const styles = StyleSheet.create({
   },
   itemActions: {
     alignItems: "flex-end",
-    gap: 12,
+    justifyContent: "flex-end",
+    marginLeft: 8,
   },
   totalContainer: {
     alignItems: "flex-end",
   },
   totalLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "600",
+    marginBottom: 2,
   },
   itemTotal: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "800",
-  },
-  deleteBtn: {
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
   },
   orderCard: {
     borderRadius: 16,
@@ -1049,7 +803,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
@@ -1094,7 +848,7 @@ const styles = StyleSheet.create({
   },
   orderItemName: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "500",
     flex: 1,
   },
   orderItemPrice: {
@@ -1121,6 +875,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
+    marginTop: 40,
   },
   emptyIconContainer: {
     width: 140,
@@ -1131,7 +886,7 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   emptyTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "800",
     marginBottom: 12,
     textAlign: "center",
@@ -1147,23 +902,23 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 20,
+    padding: 24,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 16,
     elevation: 8,
   },
   summaryDetails: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   summaryLabel: {
     fontSize: 14,
@@ -1178,21 +933,26 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
   totalValue: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "800",
   },
   checkoutButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1070b9ff",
+    backgroundColor: "#2563EB",
     paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 14,
+    borderRadius: 16,
     gap: 8,
+    shadowColor: "#2563EB",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   checkoutButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.7,
   },
   checkoutButtonText: {
     color: "#FFFFFF",

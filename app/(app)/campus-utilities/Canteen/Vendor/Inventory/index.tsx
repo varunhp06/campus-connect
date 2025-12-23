@@ -1,40 +1,36 @@
+import { useDialog } from "@/components/DialogContext";
+import { ServiceLayout } from "@/components/ServiceLayout";
+import { useTheme } from "@/components/ThemeContext";
+import { ThemedLayout } from "@/components/ThemedLayout";
+import { useToast } from "@/components/ToastContext";
+import { db } from "@/firebaseConfig";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from 'expo-image-picker';
 import {
-  View,
-  Text,
+  addDoc,
+  collection,
+  doc,
+  getDocs,
+  updateDoc,
+} from "firebase/firestore";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  LayoutAnimation,
+  Modal,
+  Platform,
+  ScrollView,
   SectionList,
   StyleSheet,
-  TouchableOpacity,
   Switch,
+  Text,
   TextInput,
-  ActivityIndicator,
-  Alert,
-  Platform,
-  LayoutAnimation,
+  TouchableOpacity,
   UIManager,
-  Image,
-  Modal,
-  KeyboardAvoidingView,
-  ScrollView,
+  View
 } from "react-native";
-import React, { useState, useEffect, useMemo } from "react";
-import { Ionicons } from "@expo/vector-icons";
-import * as ImagePicker from 'expo-image-picker'; 
-import { ThemedLayout } from "@/components/ThemedLayout";
-import { ServiceLayout } from "@/components/ServiceLayout";
-import {
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  addDoc,
-} from "firebase/firestore";
-import { 
-    ref, 
-    uploadBytes, 
-    getDownloadURL 
-} from "firebase/storage"; 
-import { db } from "@/firebaseConfig"; 
-import { useTheme } from "@/components/ThemeContext";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -58,6 +54,8 @@ interface SectionData {
 
 const InventoryScreen = () => {
   const { theme } = useTheme();
+  const { showToast } = useToast();
+  const { showDialog } = useDialog();
 
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +88,7 @@ const InventoryScreen = () => {
       setMenuItems(items);
     } catch (error) {
       console.error("Error fetching menu:", error);
-      Alert.alert("Error", "Could not load menu items");
+      showToast("Could not load menu items", "error");
     } finally {
       setLoading(false);
     }
@@ -115,7 +113,7 @@ const InventoryScreen = () => {
       await updateDoc(itemRef, { inStock: newStatus });
     } catch (error) {
       console.error("Error updating stock:", error);
-      Alert.alert("Error", "Failed to update stock status");
+      showToast("Failed to update stock status", "error");
       setMenuItems((prevItems) =>
         prevItems.map((item) =>
           item.id === itemId ? { ...item, inStock: currentStatus } : item
@@ -126,15 +124,15 @@ const InventoryScreen = () => {
 
   // --- Image Picker Logic (Camera & Gallery) ---
   const showImageOptions = () => {
-    Alert.alert(
-        "Upload Photo",
-        "Choose an option",
-        [
+    showDialog({
+        title: "Upload Photo",
+        message: "Choose an option",
+        buttons: [
             { text: "Camera", onPress: () => pickImage(true) },
             { text: "Gallery", onPress: () => pickImage(false) },
             { text: "Cancel", style: "cancel" }
         ]
-    );
+    });
   };
 
   const pickImage = async (useCamera: boolean) => {
@@ -150,7 +148,7 @@ const InventoryScreen = () => {
         // Request camera permission
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (permission.granted === false) {
-            Alert.alert("Permission Required", "Camera access is needed to take photos.");
+            showToast("Camera access is needed to take photos", "warning");
             return;
         }
         result = await ImagePicker.launchCameraAsync(options);
@@ -171,7 +169,7 @@ const InventoryScreen = () => {
   // --- Add Item Logic ---
   const handleAddItem = async () => {
     if (!newItem.name || !newItem.price) {
-      Alert.alert("Missing Fields", "Please enter Item Name and Price.");
+      showToast("Please enter Item Name and Price", "warning");
       return;
     }
 
@@ -200,7 +198,7 @@ const InventoryScreen = () => {
       setNewItem({ name: "", price: "", img: "", isVeg: true }); 
     } catch (error) {
       console.error("Error adding item:", error);
-      Alert.alert("Error", "Failed to add item. Check your connection.");
+      showToast("Failed to add item. Check your connection", "error");
     } finally {
       setAdding(false);
     }

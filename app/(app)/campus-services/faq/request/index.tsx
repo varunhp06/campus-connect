@@ -1,28 +1,32 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { ThemedLayout } from '@/components/ThemedLayout';
+import { useDialog } from '@/components/DialogContext';
+import HapticPressable from '@/components/HapticPressable';
 import { ServiceLayout } from '@/components/ServiceLayout';
 import { useTheme } from '@/components/ThemeContext';
-import HapticPressable from '@/components/HapticPressable';
-import { db, auth } from '@/firebaseConfig';
-import { collection, addDoc } from 'firebase/firestore';
+import { ThemedLayout } from '@/components/ThemedLayout';
+import { useToast } from '@/components/ToastContext';
+import { auth, db } from '@/firebaseConfig';
 import { useRouter } from 'expo-router';
+import { addDoc, collection } from 'firebase/firestore';
+import React, { useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 export default function RequestFAQ() {
   const { theme } = useTheme();
+  const { showToast } = useToast();
+  const { showDialog } = useDialog();
   const router = useRouter();
   const [question, setQuestion] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!question.trim()) {
-      Alert.alert('Error', 'Please enter a question');
+      showToast('Please enter a question', 'warning');
       return;
     }
 
     const user = auth.currentUser;
     if (!user) {
-      Alert.alert('Error', 'You must be logged in to submit a request');
+      showToast('You must be logged in to submit a request', 'error');
       return;
     }
 
@@ -35,10 +39,10 @@ export default function RequestFAQ() {
         requestedAt: new Date(),
       });
 
-      Alert.alert(
-        'Success',
-        'Your question has been submitted. An admin will review and answer it soon.',
-        [
+      showDialog({
+        title: 'Success',
+        message: 'Your question has been submitted. An admin will review and answer it soon.',
+        buttons: [
           {
             text: 'OK',
             onPress: () => {
@@ -47,10 +51,10 @@ export default function RequestFAQ() {
             }
           }
         ]
-      );
+      });
     } catch (error) {
       console.error('Error submitting request:', error);
-      Alert.alert('Error', 'Failed to submit your question. Please try again.');
+      showToast('Failed to submit your question. Please try again.', 'error');
     } finally {
       setSubmitting(false);
     }

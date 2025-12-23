@@ -1,30 +1,25 @@
-import HapticPressable from "@/components/HapticPressable";
+import { useDialog } from "@/components/DialogContext";
+import { useEquipment } from "@/components/EquipmentContext";
 import { ServiceLayout } from "@/components/ServiceLayout";
+import { useTheme } from "@/components/ThemeContext";
 import { ThemedLayout } from "@/components/ThemedLayout";
 import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "@/components/ThemeContext";
-import { useEquipment } from "@/components/EquipmentContext";
-import React, { useEffect, useState } from "react";
-import { db } from "../../../../../firebaseConfig";
 import {
+  addDoc,
   collection,
   getDocs,
-  addDoc,
-  updateDoc,
-  doc,
-  serverTimestamp,
-  increment,
+  serverTimestamp
 } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
 import { FlatList, Pressable } from "react-native";
+import { auth, db } from "../../../../../firebaseConfig";
 
 import {
-  ScrollView,
-  Text,
-  View,
-  StyleSheet,
-  TouchableOpacity,
   Image,
-  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
 
 const icon = "football";
@@ -53,10 +48,13 @@ export default function Page() {
 
   const { theme, isDarkMode } = useTheme();
   const { cart, updateQuantity, getTotalItems, clearCart } = useEquipment();
+  const { showDialog } = useDialog();
 
-  // This should come from user profile/context
+  // Get actual authenticated user
+  const currentUser = auth.currentUser;
   const userSport: SportName = "Football";
-  const userId = "user_123";
+  const userId = currentUser?.uid || "";
+  const userName = currentUser?.displayName || currentUser?.email || "Unknown User";
 
   const fetchEquipment = async () => {
     try {
@@ -77,37 +75,80 @@ export default function Page() {
   };
 
   const rentAllEquipment = async () => {
+    // Validate user is authenticated
+    if (!currentUser) {
+      showDialog({
+        title: 'Authentication Required',
+        message: 'Please log in to rent equipment',
+        buttons: [{ text: 'OK', style: 'default' }]
+      });
+      return;
+    }
+
     const rentedItems: RentedItem[] = [];
     try {
+      // Build items list WITHOUT updating inventory
       for (const itemId in cart) {
         const quantity = cart[itemId].quantity;
         const item = equipmentData.find((e) => e.id === itemId);
         if (item) {
+          // Validate stock availability (client-side check)
+          const available = (item.stock || 0) - (item.rented || 0);
+          if (available < quantity) {
+            showDialog({
+              title: 'Insufficient Stock',
+              message: `Only ${available} units of ${item.name} available`,
+              buttons: [{ text: 'OK', style: 'default' }]
+            });
+            return;
+          }
+          
           rentedItems.push({
             id: itemId,
             name: item.name,
             quantity: quantity,
           });
         }
-
-        if (!item) continue;
-        const equipmentRef = doc(db, "equipment", itemId);
-
-        await updateDoc(equipmentRef, {
-          rented: increment(quantity),
-        });
       }
+
+      if (rentedItems.length === 0) {
+        showDialog({
+          title: 'Empty Cart',
+          message: 'Please add items to your cart',
+          buttons: [{ text: 'OK', style: 'default' }]
+        });
+        return;
+      }
+
+      // Create rent request WITHOUT updating inventory
+      // Inventory will be updated only when admin approves the request
       await addDoc(collection(db, "rentrequest"), {
         userId,
+        userName,
         items: rentedItems,
         timestamp: serverTimestamp(),
-        status: false
+        status: false, // Pending approval
       });
-      console.log("All equipment rented successfully!");
+      
+      showDialog({
+        title: 'Request Submitted',
+        message: 'Your rent request has been submitted for approval. You will be notified once approved.',
+        buttons: [
+          {
+            text: 'OK',
+            style: 'default',
+            onPress: () => clearCart()
+          }
+        ]
+      });
     } catch (error) {
-      console.log("Error renting equipment:", error);
+      console.log("Error creating rent request:", error);
+      showDialog({
+        title: 'Error',
+        message: 'Failed to submit rent request. Please try again.',
+        buttons: [{ text: 'OK', style: 'default' }]
+      });
     }
-    clearCart();
   };
 
   useEffect(() => {

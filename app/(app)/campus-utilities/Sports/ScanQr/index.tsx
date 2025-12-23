@@ -1,21 +1,22 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Animated,
-  ActivityIndicator,
-  Alert,
-  Vibration,
-} from "react-native";
-import { CameraView, useCameraPermissions } from "expo-camera";
-import { Ionicons } from "@expo/vector-icons";
-import { ThemedLayout } from "@/components/ThemedLayout";
+import { useDialog } from "@/components/DialogContext";
 import { ServiceLayout } from "@/components/ServiceLayout";
 import { useTheme } from "@/components/ThemeContext";
-import { db, auth } from "../../../../../firebaseConfig";
-import { collection, addDoc, Timestamp } from "firebase/firestore";
+import { ThemedLayout } from "@/components/ThemedLayout";
+import { useToast } from "@/components/ToastContext";
+import { Ionicons } from "@expo/vector-icons";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import { addDoc, collection, Timestamp } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    Animated,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    Vibration,
+    View
+} from "react-native";
+import { auth, db } from "../../../../../firebaseConfig";
 
 const title = "Scan QR";
 
@@ -28,6 +29,8 @@ export default function QRScanner() {
   const successAnim = useState(new Animated.Value(0))[0];
 
   const { theme, isDarkMode } = useTheme();
+  const { showToast } = useToast();
+  const { showDialog } = useDialog();
   const currentUser = auth.currentUser;
 
   useEffect(() => {
@@ -63,16 +66,16 @@ export default function QRScanner() {
       }
     } catch (error: any) {
       console.error("Scan error:", error);
-      Alert.alert(
-        "Invalid QR Code",
-        error.message || "This QR code format is not supported",
-        [
+      showDialog({
+        title: 'Invalid QR Code',
+        message: error.message || 'This QR code format is not supported',
+        buttons: [
           {
-            text: "Scan Again",
+            text: 'Scan Again',
             onPress: resetScanner,
           },
-        ]
-      );
+        ],
+      });
     } finally {
       setProcessing(false);
     }
@@ -108,16 +111,16 @@ export default function QRScanner() {
         }),
       ]).start();
 
-      Alert.alert(
-        "✓ Success",
-        `${scannedData.type === "entry" ? "Entry" : "Exit"} logged successfully for ${scannedData.coachName}`,
-        [
+      showDialog({
+        title: '✓ Success',
+        message: `${scannedData.type === "entry" ? "Entry" : "Exit"} logged successfully for ${scannedData.coachName}`,
+        buttons: [
           {
-            text: "Scan Another",
+            text: 'Scan Another',
             onPress: resetScanner,
           },
-        ]
-      );
+        ],
+      });
     } catch (error: any) {
       console.error("Error saving attendance:", error);
       throw new Error("Failed to save attendance log");
@@ -160,16 +163,16 @@ export default function QRScanner() {
         }),
       ]).start();
 
-      Alert.alert(
-        "✓ Equipment Rented",
-        `${scannedData.equipmentName} (${scannedData.quantity} units) rented to ${scannedData.userName}`,
-        [
+      showDialog({
+        title: '✓ Equipment Rented',
+        message: `${scannedData.equipmentName} (${scannedData.quantity} units) rented to ${scannedData.userName}`,
+        buttons: [
           {
-            text: "Scan Another",
+            text: 'Scan Another',
             onPress: resetScanner,
           },
-        ]
-      );
+        ],
+      });
     } catch (error: any) {
       console.error("Error saving equipment rental:", error);
       throw new Error("Failed to save equipment rental");

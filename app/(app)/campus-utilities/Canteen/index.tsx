@@ -1,21 +1,20 @@
-import React, { useEffect, useState } from "react";
-import { ThemedLayout } from "@/components/ThemedLayout";
 import { ServiceContent } from "@/components/ServiceContent";
-import { auth, db } from "../../../../firebaseConfig"
+import { useTheme } from "@/components/ThemeContext";
+import { ThemedLayout } from "@/components/ThemedLayout";
+import { useToast } from "@/components/ToastContext";
 import {
   collection,
-  getDocs,
-  addDoc,
-  updateDoc,
-  doc,
-  serverTimestamp,
-  increment,
   CollectionReference,
+  doc,
+  getDocs,
   query,
-  where,
+  serverTimestamp,
+  updateDoc,
+  where
 } from "firebase/firestore";
-import { View, Switch, Text, StyleSheet, Alert } from "react-native";
-import { useTheme } from "@/components/ThemeContext";
+import React, { useEffect, useState } from "react";
+import { StyleSheet, Switch, Text, View } from "react-native";
+import { auth, db } from "../../../../firebaseConfig";
 
 interface shop {
   id: string;
@@ -113,9 +112,11 @@ export default function NightDeliverySection() {
     }
   };
 
+  const { showToast } = useToast();
+
   const toggleShopStatus = async (newStatus: boolean) => {
     if (!vendorShopId) {
-      Alert.alert("Error", "Shop not found");
+      showToast("Shop not found", "error");
       return;
     }
 
@@ -128,10 +129,10 @@ export default function NightDeliverySection() {
       });
 
       setShopStatus(newStatus);
-      Alert.alert("Success", `Shop is now ${newStatus ? "Online" : "Offline"}`);
+      showToast(`Shop is now ${newStatus ? "Online" : "Offline"}`, "success");
     } catch (error) {
       console.error("Error updating shop status:", error);
-      Alert.alert("Error", "Failed to update shop status");
+      showToast("Failed to update shop status", "error");
       // Revert the toggle if update fails
       setShopStatus(!newStatus);
     } finally {

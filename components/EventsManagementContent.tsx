@@ -1,28 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  Modal,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from './ThemeContext';
 import { auth, db } from '@/firebaseConfig';
+import { Ionicons } from '@expo/vector-icons';
 import {
-  collection,
-  addDoc,
-  deleteDoc,
-  doc,
-  query,
-  where,
-  onSnapshot,
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    onSnapshot,
+    query,
+    where,
 } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View
+} from 'react-native';
+import { useDialog } from './DialogContext';
 import HapticPressable from './HapticPressable';
 import { ServiceLayout } from './ServiceLayout';
+import { useTheme } from './ThemeContext';
+import { useToast } from './ToastContext';
 
 export const checkUserHasEventManagementAccess = async (): Promise<boolean> => {
   try {
@@ -80,6 +81,8 @@ const YEARS = [currentYear.toString(), (currentYear + 1).toString()];
 
 export const EventsManagementContent: React.FC = () => {
   const { theme } = useTheme();
+  const { showToast } = useToast();
+  const { showDialog } = useDialog();
   const [userClaims, setUserClaims] = useState<UserClaims>({});
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<Event[]>([]);
@@ -267,18 +270,18 @@ export const EventsManagementContent: React.FC = () => {
 
   const handleAddEvent = async () => {
     if (!title || !description || !date || !month || !year) {
-      Alert.alert('Error', 'Please fill all fields');
+      showToast('Please fill all fields', 'warning');
       return;
     }
 
     const validation = validateDate(date, month, year);
     if (!validation.valid) {
-      Alert.alert('Error', validation.error || 'Invalid date');
+      showToast(validation.error || 'Invalid date', 'error');
       return;
     }
 
     if (!selectedTab) {
-      Alert.alert('Error', 'Please select a category');
+      showToast('Please select a category', 'warning');
       return;
     }
 
@@ -296,29 +299,29 @@ export const EventsManagementContent: React.FC = () => {
         createdAt: Date.now(),
       });
 
-      Alert.alert('Success', 'Event added successfully');
+      showToast('Event added successfully', 'success');
       resetForm();
       setModalVisible(false);
     } catch (error) {
-      Alert.alert('Error', 'Failed to add event');
+      showToast('Failed to add event', 'error');
       console.error(error);
     }
   };
 
   const handleRequestEvent = async () => {
     if (!title || !description || !date || !month || !year) {
-      Alert.alert('Error', 'Please fill all fields');
+      showToast('Please fill all fields', 'warning');
       return;
     }
 
     const validation = validateDate(date, month, year);
     if (!validation.valid) {
-      Alert.alert('Error', validation.error || 'Invalid date');
+      showToast(validation.error || 'Invalid date', 'error');
       return;
     }
 
     if (!selectedTab) {
-      Alert.alert('Error', 'Please select a category');
+      showToast('Please select a category', 'warning');
       return;
     }
 
@@ -338,11 +341,11 @@ export const EventsManagementContent: React.FC = () => {
         requestedAt: Date.now(),
       });
 
-      Alert.alert('Success', 'Event request submitted for approval');
+      showToast('Event request submitted for approval', 'success');
       resetForm();
       setRequestModalVisible(false);
     } catch (error) {
-      Alert.alert('Error', 'Failed to submit request');
+      showToast('Failed to submit request', 'error');
       console.error(error);
     }
   };
@@ -362,9 +365,9 @@ export const EventsManagementContent: React.FC = () => {
 
       await deleteDoc(doc(db, 'eventRequests', request.id));
 
-      Alert.alert('Success', 'Event approved and published');
+      showToast('Event approved and published', 'success');
     } catch (error) {
-      Alert.alert('Error', 'Failed to approve request');
+      showToast('Failed to approve request', 'error');
       console.error(error);
     }
   };
@@ -372,18 +375,18 @@ export const EventsManagementContent: React.FC = () => {
   const handleRejectRequest = async (requestId: string) => {
     try {
       await deleteDoc(doc(db, 'eventRequests', requestId));
-      Alert.alert('Success', 'Event request rejected');
+      showToast('Event request rejected', 'success');
     } catch (error) {
-      Alert.alert('Error', 'Failed to reject request');
+      showToast('Failed to reject request', 'error');
       console.error(error);
     }
   };
 
   const handleDeleteEvent = async (eventId: string) => {
-    Alert.alert(
-      'Confirm Delete',
-      'Are you sure you want to delete this event?',
-      [
+    showDialog({
+      title: 'Confirm Delete',
+      message: 'Are you sure you want to delete this event?',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
@@ -391,15 +394,15 @@ export const EventsManagementContent: React.FC = () => {
           onPress: async () => {
             try {
               await deleteDoc(doc(db, 'events', eventId));
-              Alert.alert('Success', 'Event deleted');
+              showToast('Event deleted', 'success');
             } catch (error) {
-              Alert.alert('Error', 'Failed to delete event');
+              showToast('Failed to delete event', 'error');
               console.error(error);
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const resetForm = () => {

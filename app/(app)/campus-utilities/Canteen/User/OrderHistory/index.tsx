@@ -1,29 +1,27 @@
-import React, { useEffect, useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  RefreshControl,
-  ActivityIndicator,
-  Image,
-  TouchableOpacity,
-  Dimensions,
-} from "react-native";
+import { ServiceLayout } from "@/components/ServiceLayout";
+import { useTheme } from "@/components/ThemeContext";
+import { ThemedLayout } from "@/components/ThemedLayout";
+import { useToast } from "@/components/ToastContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
-  collection,
-  query,
-  where,
-  getDocs,
-  orderBy,
-  limit,
+    collection,
+    getDocs,
+    query,
+    where
 } from "firebase/firestore";
-import { db, auth } from "../../../../../../firebaseConfig"; // Adjust import path as needed
-import { useTheme } from "@/components/ThemeContext"; // Adjust import path as needed
-import { ThemedLayout } from "@/components/ThemedLayout"; // Adjust import path as needed
-import { ServiceLayout } from "@/components/ServiceLayout";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    Dimensions,
+    FlatList,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from "react-native";
+import { auth, db } from "../../../../../../firebaseConfig";
 
 // Types
 interface OrderItem {
@@ -51,10 +49,20 @@ const OrderHistory = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { isDarkMode, theme } = useTheme();
+  const { showToast } = useToast();
   const router = useRouter();
 
-  // Use actual auth ID or fallback for testing
-  const userId = "user_123";
+  // Get authenticated user ID
+  const currentUser = auth.currentUser;
+  const userId = currentUser?.uid || "";
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!currentUser) {
+      showToast("Please log in to view order history", "error");
+      router.push("/LoginScreen");
+    }
+  }, [currentUser]);
 
   const fetchHistory = async () => {
     try {

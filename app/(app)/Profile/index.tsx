@@ -1,23 +1,24 @@
 // app/ProfilePage.tsx
-import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { useDialog } from "@/components/DialogContext";
+import { ServiceLayout } from "@/components/ServiceLayout";
 import { useTheme } from "@/components/ThemeContext";
 import { ThemedLayout } from "@/components/ThemedLayout";
-import { ServiceLayout } from "@/components/ServiceLayout";
+import { auth } from "@/firebaseConfig";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
-import { auth } from "@/firebaseConfig";
+import React from "react";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from "react-native";
 
 export default function ProfilePage() {
   const { isDarkMode, theme } = useTheme();
+  const { showDialog } = useDialog();
   const router = useRouter();
 
   // Replace with actual Firebase user + profile info
@@ -33,17 +34,21 @@ export default function ProfilePage() {
   };
 
   const handleLogout = async () => {
-    Alert.alert("Log Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Log Out",
-        style: "destructive",
-        onPress: async () => {
-          await signOut(auth);
-          router.replace("/LoginScreen");
+    showDialog({
+      title: 'Log Out',
+      message: 'Are you sure you want to sign out?',
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            await signOut(auth);
+            router.replace("/LoginScreen");
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   return (

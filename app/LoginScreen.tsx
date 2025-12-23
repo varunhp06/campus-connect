@@ -1,12 +1,8 @@
 import React from 'react';
-import { Alert } from 'react-native';
-import { ThemedLayout } from '../components/ThemedLayout';
 import { LoginForm } from '../components/LoginForm';
+import { ThemedLayout } from '../components/ThemedLayout';
 
 const LoginScreen: React.FC = () => {
-  const handleMenuPress = () => {
-    Alert.alert('Menu', 'Navigation menu opened');
-  };
 
   
 
@@ -17,7 +13,6 @@ const LoginScreen: React.FC = () => {
         showHamburger: false,
         showTitle: false,
         showThemeToggle: true,
-        onHamburgerPress: handleMenuPress,
       }}
     >
       <LoginForm />

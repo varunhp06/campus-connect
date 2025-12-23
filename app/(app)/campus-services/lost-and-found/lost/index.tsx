@@ -1,35 +1,38 @@
 // screens/LostItems.tsx
-import React, { useState, useEffect } from 'react';
+import { CreateLostItemData, LostItem } from '@/components/data/lostAndFound';
 import {
-  View,
-  Text,
-  FlatList,
-  Image,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  Modal,
-  TextInput,
-  ScrollView,
-  Platform,
-} from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { auth } from '@/firebaseConfig';
-import {
-  createLostItem,
-  subscribeLostItems,
-  claimFoundLostItem,
-  removeLostItem,
+    claimFoundLostItem,
+    createLostItem,
+    removeLostItem,
+    subscribeLostItems,
 } from '@/components/data/lostAndFoundService';
-import { LostItem, CreateLostItemData } from '@/components/data/lostAndFound';
-import { ServiceLayout } from '@/components/ServiceLayout';
-import { ThemedLayout } from '@/components/ThemedLayout';
-import { useTheme } from '@/components/ThemeContext';
+import { useDialog } from '@/components/DialogContext';
 import HapticPressable from '@/components/HapticPressable';
+import { ServiceLayout } from '@/components/ServiceLayout';
+import { useTheme } from '@/components/ThemeContext';
+import { ThemedLayout } from '@/components/ThemedLayout';
+import { useToast } from '@/components/ToastContext';
+import { auth } from '@/firebaseConfig';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    FlatList,
+    Image,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View
+} from 'react-native';
 
 export default function LostItemsScreen() {
   const { theme, isDarkMode } = useTheme();
+  const { showToast } = useToast();
+  const { showDialog } = useDialog();
   const [items, setItems] = useState<LostItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -61,7 +64,7 @@ export default function LostItemsScreen() {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please grant photo library access');
+      showToast('Please grant photo library access', 'warning');
       return;
     }
 
@@ -79,7 +82,7 @@ export default function LostItemsScreen() {
 
   const handleSubmit = async () => {
     if (!itemName || !description || !location || !imageUri) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showToast('Please fill in all fields', 'warning');
       return;
     }
 
@@ -89,12 +92,12 @@ export default function LostItemsScreen() {
     selectedDateTime.setMinutes(timeLost.getMinutes());
 
     if (selectedDateTime > new Date()) {
-      Alert.alert('Error', 'Date and time cannot be in the future');
+      showToast('Date and time cannot be in the future', 'error');
       return;
     }
 
     if (!currentUser || !currentUser.email) {
-      Alert.alert('Error', 'You must be logged in');
+      showToast('You must be logged in', 'error');
       return;
     }
 
@@ -121,11 +124,11 @@ export default function LostItemsScreen() {
 
       await createLostItem(data, currentUser.uid, currentUser.email, userPhone);
 
-      Alert.alert('Success', 'Lost item posted successfully');
+      showToast('Lost item posted successfully', 'success');
       resetForm();
       setModalVisible(false);
     } catch (error) {
-      Alert.alert('Error', 'Failed to post lost item');
+      showToast('Failed to post lost item', 'error');
       console.error(error);
     } finally {
       setSubmitting(false);
@@ -143,19 +146,19 @@ export default function LostItemsScreen() {
 
   const handleClaimFound = async (item: LostItem) => {
     if (!currentUser || !currentUser.email) {
-      Alert.alert('Error', 'You must be logged in');
+      showToast('You must be logged in', 'error');
       return;
     }
 
     if (item.userId === currentUser.uid) {
-      Alert.alert('Error', 'You cannot claim your own lost item');
+      showToast('You cannot claim your own lost item', 'warning');
       return;
     }
 
-    Alert.alert(
-      'Claim Item',
-      `Claim that you found ${item.itemName}?`,
-      [
+    showDialog({
+      title: 'Claim Item',
+      message: `Claim that you found ${item.itemName}?`,
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Claim',
@@ -169,25 +172,22 @@ export default function LostItemsScreen() {
                 userPhone,
                 item
               );
-              Alert.alert(
-                'Success',
-                `You can now contact ${item.userEmail} at ${item.userPhone}`
-              );
+              showToast(`You can now contact ${item.userEmail} at ${item.userPhone}`, 'success');
               setDetailModalVisible(false);
             } catch (error) {
-              Alert.alert('Error', 'Failed to claim item');
+              showToast('Failed to claim item', 'error');
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const handleRemove = async (item: LostItem) => {
-    Alert.alert(
-      'Remove Item',
-      'Have you found this item yourself?',
-      [
+    showDialog({
+      title: 'Remove Item',
+      message: 'Have you found this item yourself?',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Remove',
@@ -195,15 +195,15 @@ export default function LostItemsScreen() {
           onPress: async () => {
             try {
               await removeLostItem(item.id, item.cloudinaryPublicId);
-              Alert.alert('Success', 'Item removed');
+              showToast('Item removed', 'success');
               setDetailModalVisible(false);
             } catch (error) {
-              Alert.alert('Error', 'Failed to remove item');
+              showToast('Failed to remove item', 'error');
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const renderItem = ({ item }: { item: LostItem }) => (

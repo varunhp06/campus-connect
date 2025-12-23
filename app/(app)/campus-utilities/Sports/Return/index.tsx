@@ -1,28 +1,26 @@
-import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "@/components/ThemeContext";
-import React, { useEffect, useState } from "react";
-import { db } from "../../../../../firebaseConfig";
-import {
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  increment,
-  deleteDoc,
-  addDoc,
-} from "firebase/firestore";
-import {
-  ScrollView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  Animated,
-} from "react-native";
-import { ThemedLayout } from "@/components/ThemedLayout";
+import { useDialog } from "@/components/DialogContext";
 import { ServiceLayout } from "@/components/ServiceLayout";
+import { useTheme } from "@/components/ThemeContext";
+import { ThemedLayout } from "@/components/ThemedLayout";
+import { useToast } from "@/components/ToastContext";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import {
+    addDoc,
+    collection,
+    getDocs
+} from "firebase/firestore";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    Animated,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from "react-native";
+import { auth, db } from "../../../../../firebaseConfig";
 
 const title = "Return Equipment";
 
@@ -46,7 +44,21 @@ export default function ReturnPage() {
   const fadeAnim = useState(new Animated.Value(0))[0];
 
   const { theme, isDarkMode } = useTheme();
-  const userId = "user_123";
+  const { showToast } = useToast();
+  const { showDialog } = useDialog();
+  const router = useRouter();
+
+  // Get authenticated user ID
+  const currentUser = auth.currentUser;
+  const userId = currentUser?.uid || "";
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!currentUser) {
+      showToast("Please log in to return equipment", "error");
+      router.push("/LoginScreen");
+    }
+  }, [currentUser]);
 
   const fetchRentedEquipment = async () => {
     try {
@@ -74,57 +86,15 @@ export default function ReturnPage() {
     }
   };
 
-  // const returnAllEquipment = async () => {
-  //   Alert.alert(
-  //     "Return All Equipment",
-  //     "Are you sure you want to return all rented equipment?",
-  //     [
-  //       { text: "Cancel", style: "cancel" },
-  //       {
-  //         text: "Return All",
-  //         style: "destructive",
-  //         onPress: async () => {
-  //           try {
-  //             setReturning(true);
-  //             for (const record of rentedRecords) {
-  //               const items = record.items || [];
-
-  //               for (const item of items) {
-  //                 const equipmentRef = doc(db, "equipment", item.id);
-  //                 await updateDoc(equipmentRef, {
-  //                   rented: increment(-item.quantity),
-  //                 });
-  //               }
-
-  //               await deleteDoc(doc(db, "rented", record.id));
-  //             }
-
-  //             setRentedRecords([]);
-  //             Alert.alert("Success", "All equipment returned successfully!");
-  //           } catch (error) {
-  //             console.log("Error returning equipment:", error);
-  //             Alert.alert(
-  //               "Error",
-  //               "Failed to return equipment. Please try again."
-  //             );
-  //           } finally {
-  //             setReturning(false);
-  //           }
-  //         },
-  //       },
-  //     ]
-  //   );
-  // };
-
   const returnAllEquipment = async () => {
-    Alert.alert(
-      "Request Return",
-      "Are you sure you want to request a return for all rented equipment?",
-      [
-        { text: "Cancel", style: "cancel" },
+    showDialog({
+      title: 'Request Return',
+      message: 'Are you sure you want to request a return for all rented equipment?',
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: "Request Return",
-          style: "destructive",
+          text: 'Request Return',
+          style: 'destructive',
           onPress: async () => {
             try {
               setReturning(true);
@@ -139,78 +109,19 @@ export default function ReturnPage() {
                 });
               }
 
-              Alert.alert("Success", "Return request submitted successfully!");
+              showToast('Return request submitted successfully!', 'success');
             } catch (error) {
               console.log("Error creating return request:", error);
-              Alert.alert(
-                "Error",
-                "Failed to request return. Please try again."
-              );
+              showToast('Failed to request return. Please try again.', 'error');
             } finally {
               setReturning(false);
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
-  // const returnSingleItem = async (
-  //   recordId: string,
-  //   itemId: string,
-  //   quantity: number,
-  //   itemName: string
-  // ) => {
-  //   Alert.alert(
-  //     "Return Item",
-  //     `Return ${quantity} ${itemName}${quantity > 1 ? "s" : ""}?`,
-  //     [
-  //       { text: "Cancel", style: "cancel" },
-  //       {
-  //         text: "Return",
-  //         onPress: async () => {
-  //           try {
-  //             const equipmentRef = doc(db, "equipment", itemId);
-  //             await updateDoc(equipmentRef, {
-  //               rented: increment(-quantity),
-  //             });
-
-  //             // Find the record and update items array
-  //             const record = rentedRecords.find((r) => r.id === recordId);
-  //             if (!record) return;
-
-  //             const updatedItems = record.items.filter(
-  //               (item) => item.id !== itemId
-  //             );
-
-  //             if (updatedItems.length === 0) {
-  //               // Delete the entire record if no items left
-  //               await deleteDoc(doc(db, "rented", recordId));
-  //               setRentedRecords((prev) =>
-  //                 prev.filter((r) => r.id !== recordId)
-  //               );
-  //             } else {
-  //               // Update the record with remaining items
-  //               await updateDoc(doc(db, "rented", recordId), {
-  //                 items: updatedItems,
-  //               });
-  //               setRentedRecords((prev) =>
-  //                 prev.map((r) =>
-  //                   r.id === recordId ? { ...r, items: updatedItems } : r
-  //                 )
-  //               );
-  //             }
-
-  //             Alert.alert("Success", `${itemName} returned successfully!`);
-  //           } catch (error) {
-  //             console.log("Error returning item:", error);
-  //             Alert.alert("Error", "Failed to return item.");
-  //           }
-  //         },
-  //       },
-  //     ]
-  //   );
-  // };
 
   const returnSingleItem = async (
   recordId: string,
@@ -218,13 +129,13 @@ export default function ReturnPage() {
   quantity: number,
   itemName: string
 ) => {
-  Alert.alert(
-    "Request Return",
-    `Request return for ${quantity} ${itemName}${quantity > 1 ? "s" : ""}?`,
-    [
-      { text: "Cancel", style: "cancel" },
+  showDialog({
+    title: 'Request Return',
+    message: `Request return for ${quantity} ${itemName}${quantity > 1 ? "s" : ""}?`,
+    buttons: [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: "Submit Request",
+        text: 'Submit Request',
         onPress: async () => {
           try {
             const record = rentedRecords.find((r) => r.id === recordId);
@@ -237,21 +148,18 @@ export default function ReturnPage() {
               itemName,
               quantity,
               timestamp: new Date(),
-              status: "pending", // pending | approved | rejected
+              status: "pending",
             });
 
-            Alert.alert(
-              "Success",
-              `Return request submitted for ${itemName}.`
-            );
+            showToast(`Return request submitted for ${itemName}.`, 'success');
           } catch (error) {
             console.log("Error requesting return:", error);
-            Alert.alert("Error", "Failed to request return. Please try again.");
+            showToast('Failed to request return. Please try again.', 'error');
           }
         },
       },
-    ]
-  );
+    ],
+  });
 };
 
 

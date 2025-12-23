@@ -1,13 +1,13 @@
-import { SplashScreen, Stack } from "expo-router";
-import { useEffect } from "react";
 import {
-  useFonts,
+  OpenSans_300Light,
   OpenSans_400Regular,
   OpenSans_700Bold,
-  OpenSans_300Light,
+  useFonts,
 } from "@expo-google-fonts/open-sans";
+import { SplashScreen, Stack } from "expo-router";
+import { useEffect } from "react";
 
-SplashScreen.preventAutoHideAsync();
+ 
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({

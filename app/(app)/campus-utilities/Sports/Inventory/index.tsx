@@ -1,30 +1,32 @@
-import { Ionicons } from "@expo/vector-icons";
+import { useDialog } from "@/components/DialogContext";
+import { ServiceLayout } from "@/components/ServiceLayout";
 import { useTheme } from "@/components/ThemeContext";
-import React, { useEffect, useState } from "react";
-import { db } from "../../../../../firebaseConfig";
+import { ThemedLayout } from "@/components/ThemedLayout";
+import { useToast } from "@/components/ToastContext";
+import { Ionicons } from "@expo/vector-icons";
 import {
+  addDoc,
   collection,
-  getDocs,
-  doc,
-  updateDoc,
-  increment,
   deleteDoc,
+  doc,
+  getDocs,
+  updateDoc
 } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
 import {
-  ScrollView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Animated,
-  TextInput,
   Image,
   KeyboardAvoidingView,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
-import { ThemedLayout } from "@/components/ThemedLayout";
-import { ServiceLayout } from "@/components/ServiceLayout";
+import { db } from "../../../../../firebaseConfig";
 
 const title = "View Inventory";
 
@@ -61,9 +63,19 @@ export default function InventoryPage() {
   const [filterStatus, setFilterStatus] = useState<
     "all" | "rented" | "available"
   >("all");
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingItem, setEditingItem] = useState<Equipment | null>(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    sport: "",
+    stock: "",
+    img: "",
+  });
   const fadeAnim = useState(new Animated.Value(0))[0];
 
   const { theme, isDarkMode } = useTheme();
+  const { showToast } = useToast();
+  const { showDialog } = useDialog();
 
   const fetchRentedEquipment = async () => {
     try {
@@ -148,6 +160,95 @@ export default function InventoryPage() {
       ...prev,
       [itemId]: !prev[itemId],
     }));
+  };
+
+  const resetForm = () => {
+    setFormData({ name: "", sport: "", stock: "", img: "" });
+    setEditingItem(null);
+    setModalVisible(false);
+  };
+
+  const handleEditPress = (item: Equipment) => {
+    setEditingItem(item);
+    setFormData({
+      name: item.name,
+      sport: item.sport,
+      stock: item.stock.toString(),
+      img: item.img || "",
+    });
+    setModalVisible(true);
+  };
+
+  const handleSaveEquipment = async () => {
+    if (!formData.name || !formData.sport || !formData.stock) {
+      showToast("Please fill in all required fields", "warning");
+      return;
+    }
+
+    const stockNum = parseInt(formData.stock);
+    if (isNaN(stockNum) || stockNum < 0) {
+      showToast("Please enter a valid stock number", "warning");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      if (editingItem) {
+        // Update existing
+        const itemRef = doc(db, "equipment", editingItem.id);
+        await updateDoc(itemRef, {
+          name: formData.name,
+          sport: formData.sport,
+          stock: stockNum,
+          img: formData.img,
+        });
+        showToast("Equipment updated successfully", "success");
+      } else {
+        // Add new
+        await addDoc(collection(db, "equipment"), {
+          name: formData.name,
+          sport: formData.sport,
+          stock: stockNum,
+          rented: 0,
+          img: formData.img,
+        });
+        showToast("Equipment added successfully", "success");
+      }
+      resetForm();
+      fetchEquipment();
+    } catch (error) {
+      console.error("Error saving equipment:", error);
+      showToast("Failed to save equipment", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeletePress = (item: Equipment) => {
+    showDialog({
+      title: 'Confirm Delete',
+      message: 'Are you sure you want to delete this item?',
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await deleteDoc(doc(db, "equipment", item.id));
+              showToast("Item deleted", "success");
+              fetchEquipment();
+            } catch (error) {
+              console.error("Error deleting:", error);
+              showToast("Failed to delete item", "error");
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ],
+    });
   };
 
   const totalStock = equipmentData.reduce((sum, item) => sum + item.stock, 0);
@@ -443,6 +544,18 @@ export default function InventoryPage() {
               </View>
             </View>
 
+            {/* Add Equipment Button */}
+            <TouchableOpacity
+              style={[
+                styles.addButton,
+                { backgroundColor: "#2563EB" },
+              ]}
+              onPress={() => setModalVisible(true)}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.addButtonText}>Add New Equipment</Text>
+            </TouchableOpacity>
+
             {/* Inventory List */}
             <View style={styles.inventoryList}>
               {filteredEquipment.map((item) => {
@@ -478,27 +591,51 @@ export default function InventoryPage() {
 
                       {/* Item Info */}
                       <View style={styles.itemInfo}>
-                        <View style={styles.itemHeader}>
-                          <View style={styles.itemTitleContainer}>
-                            <Text
-                              style={[
-                                styles.itemName,
-                                { color: isDarkMode ? "#F1F5F9" : "#1E293B" },
-                              ]}
-                            >
-                              {item.name}
-                            </Text>
-                            <Text
-                              style={[
-                                styles.itemSport,
-                                { color: isDarkMode ? "#64748B" : "#94A3B8" },
-                              ]}
-                            >
-                              {item.sport}
-                            </Text>
-                          </View>
+                          <View style={styles.itemHeader}>
+                            <View style={styles.headerTop}>
+                              <View style={styles.itemTitleContainer}>
+                                <Text
+                                  style={[
+                                    styles.itemName,
+                                    { color: isDarkMode ? "#F1F5F9" : "#1E293B" },
+                                  ]}
+                                >
+                                  {item.name}
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.itemSport,
+                                    { color: isDarkMode ? "#64748B" : "#94A3B8" },
+                                  ]}
+                                >
+                                  {item.sport}
+                                </Text>
+                              </View>
+                              <View style={styles.actionButtons}>
+                                <TouchableOpacity
+                                  style={styles.actionButton}
+                                  onPress={() => handleEditPress(item)}
+                                >
+                                  <Ionicons
+                                    name="create-outline"
+                                    size={20}
+                                    color="#2563EB"
+                                  />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={styles.actionButton}
+                                  onPress={() => handleDeletePress(item)}
+                                >
+                                  <Ionicons
+                                    name="trash-outline"
+                                    size={20}
+                                    color="#EF4444"
+                                  />
+                                </TouchableOpacity>
+                              </View>
+                            </View>
 
-                          <View style={styles.statsRow}>
+                            <View style={styles.statsRow}>
                             <View style={styles.statItem}>
                               <Text
                                 style={[
@@ -801,6 +938,121 @@ export default function InventoryPage() {
             </View>
           </ScrollView>
         </Animated.View>
+
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={resetForm}
+        >
+          <View style={styles.modalOverlay}>
+            <View
+              style={[
+                styles.modalContent,
+                { backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF" },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.modalTitle,
+                  { color: isDarkMode ? "#F1F5F9" : "#1E293B" },
+                ]}
+              >
+                {editingItem ? "Edit Equipment" : "Add Equipment"}
+              </Text>
+
+              <ScrollView style={styles.formScroll}>
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.label, { color: isDarkMode ? "#CBD5E1" : "#475569" }]}>Item Name</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: isDarkMode ? "#0F172A" : "#F8FAFC",
+                        color: isDarkMode ? "#F1F5F9" : "#1E293B",
+                        borderColor: isDarkMode ? "#334155" : "#E2E8F0",
+                      },
+                    ]}
+                    value={formData.name}
+                    onChangeText={(text) => setFormData({ ...formData, name: text })}
+                    placeholder="e.g., Cricket Bat"
+                    placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.label, { color: isDarkMode ? "#CBD5E1" : "#475569" }]}>Sport Category</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: isDarkMode ? "#0F172A" : "#F8FAFC",
+                        color: isDarkMode ? "#F1F5F9" : "#1E293B",
+                        borderColor: isDarkMode ? "#334155" : "#E2E8F0",
+                      },
+                    ]}
+                    value={formData.sport}
+                    onChangeText={(text) => setFormData({ ...formData, sport: text })}
+                    placeholder="e.g., Cricket"
+                    placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.label, { color: isDarkMode ? "#CBD5E1" : "#475569" }]}>Total Stock</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: isDarkMode ? "#0F172A" : "#F8FAFC",
+                        color: isDarkMode ? "#F1F5F9" : "#1E293B",
+                        borderColor: isDarkMode ? "#334155" : "#E2E8F0",
+                      },
+                    ]}
+                    value={formData.stock}
+                    onChangeText={(text) => setFormData({ ...formData, stock: text })}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={[styles.label, { color: isDarkMode ? "#CBD5E1" : "#475569" }]}>Image URL (Optional)</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: isDarkMode ? "#0F172A" : "#F8FAFC",
+                        color: isDarkMode ? "#F1F5F9" : "#1E293B",
+                        borderColor: isDarkMode ? "#334155" : "#E2E8F0",
+                      },
+                    ]}
+                    value={formData.img}
+                    onChangeText={(text) => setFormData({ ...formData, img: text })}
+                    placeholder="https://..."
+                    placeholderTextColor={isDarkMode ? "#64748B" : "#94A3B8"}
+                  />
+                </View>
+              </ScrollView>
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={resetForm}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={handleSaveEquipment}
+                >
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ServiceLayout>
     </ThemedLayout>
   );
@@ -1097,5 +1349,108 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 13,
     fontWeight: "500",
+  },
+  // Add Button
+  addButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  addButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  // Header Actions
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  actionButtons: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  actionButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: "rgba(37, 99, 235, 0.1)",
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalContent: {
+    borderRadius: 24,
+    padding: 24,
+    maxHeight: "80%",
+    width: "100%",
+    maxWidth: 500,
+    alignSelf: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  formScroll: {
+    marginBottom: 20,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelButton: {
+    backgroundColor: "#EF4444",
+  },
+  saveButton: {
+    backgroundColor: "#2563EB",
+  },
+  cancelButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  saveButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

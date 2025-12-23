@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, Modal, ScrollView, Alert } from 'react-native';
-import { ThemedLayout } from '@/components/ThemedLayout';
+import HapticPressable from '@/components/HapticPressable';
 import { ServiceLayout } from '@/components/ServiceLayout';
 import { useTheme } from '@/components/ThemeContext';
-import HapticPressable from '@/components/HapticPressable';
-import { Ionicons } from '@expo/vector-icons';
+import { ThemedLayout } from '@/components/ThemedLayout';
 import { auth, db } from '@/firebaseConfig';
-import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
+import { collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import { FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 interface FAQ {
   id: string;
@@ -18,6 +18,8 @@ interface FAQ {
 
 export default function ViewFAQs() {
   const { theme } = useTheme();
+  const { showToast } = useToast();
+  const { showDialog } = useDialog();
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFaqAdmin, setIsFaqAdmin] = useState(false);
@@ -50,7 +52,7 @@ export default function ViewFAQs() {
       setFaqs(faqsData.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds));
     } catch (error) {
       console.error('Error loading FAQs:', error);
-      Alert.alert('Error', 'Failed to load FAQs');
+      showToast('Failed to load FAQs', 'error');
     } finally {
       setLoading(false);
     }
@@ -65,7 +67,7 @@ export default function ViewFAQs() {
 
   const handleSaveEdit = async () => {
     if (!editingFaq || !editQuestion.trim() || !editAnswer.trim()) {
-      Alert.alert('Error', 'Question and answer are required');
+      showToast('Question and answer are required', 'warning');
       return;
     }
 
@@ -85,18 +87,18 @@ export default function ViewFAQs() {
 
       setEditModalVisible(false);
       setEditingFaq(null);
-      Alert.alert('Success', 'FAQ updated successfully');
+      showToast('FAQ updated successfully', 'success');
     } catch (error) {
       console.error('Error updating FAQ:', error);
-      Alert.alert('Error', 'Failed to update FAQ');
+      showToast('Failed to update FAQ', 'error');
     }
   };
 
   const handleDelete = (faq: FAQ) => {
-    Alert.alert(
-      'Delete FAQ',
-      'Are you sure you want to delete this FAQ?',
-      [
+    showDialog({
+      title: 'Delete FAQ',
+      message: 'Are you sure you want to delete this FAQ?',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
@@ -105,15 +107,15 @@ export default function ViewFAQs() {
             try {
               await deleteDoc(doc(db, 'faqs', faq.id));
               setFaqs(faqs.filter(f => f.id !== faq.id));
-              Alert.alert('Success', 'FAQ deleted successfully');
+              showToast('FAQ deleted successfully', 'success');
             } catch (error) {
               console.error('Error deleting FAQ:', error);
-              Alert.alert('Error', 'Failed to delete FAQ');
+              showToast('Failed to delete FAQ', 'error');
             }
           }
         }
       ]
-    );
+    });
   };
 
   const renderFAQ = ({ item }: { item: FAQ }) => {

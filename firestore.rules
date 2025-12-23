@@ -1,0 +1,257 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===== Helper Functions =====
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isVendor() {
+      return isAuthenticated() && request.auth.token.vendor == true;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+    
+    function isSportsAdmin() {
+      return isAuthenticated() && request.auth.token.sportsAdmin == true;
+    }
+    
+    function isCultAdmin() {
+      return isAuthenticated() && request.auth.token.cultAdmin == true;
+    }
+    
+    function isTechAdmin() {
+      return isAuthenticated() && request.auth.token.techAdmin == true;
+    }
+    
+    function isFaqAdmin() {
+      return isAuthenticated() && request.auth.token.faqAdmin == true;
+    }
+    
+    // ===== Canteen Orders =====
+    
+    match /orders/{orderId} {
+      // Users can read their own orders, vendors can read orders for their shop
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.userId) || 
+        isOwner(resource.data.shopId) ||
+        isAdmin()
+      );
+      
+      // Only authenticated users can create orders with their own userId
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.status == 'pending';
+      
+      // Only vendors can update orders for their shop
+      allow update: if isAuthenticated() && (
+        isOwner(resource.data.shopId) ||
+        isAdmin()
+      );
+      
+      // Never allow deletion - keep for records
+      allow delete: if false;
+    }
+    
+    // ===== Shop Menus =====
+    
+    match /shops/{shopId}/menu/{itemId} {
+      // Anyone authenticated can read menus
+      allow read: if isAuthenticated();
+      
+      // Only the shop owner can modify their menu
+      allow write: if isAuthenticated() && (
+        isOwner(shopId) ||
+        isAdmin()
+      );
+    }
+    
+    // ===== Sports Equipment =====
+    
+    match /equipment/{equipmentId} {
+      // Anyone authenticated can read equipment
+      allow read: if isAuthenticated();
+      
+      // Only sports admins can modify equipment
+      allow write: if isSportsAdmin() || isAdmin();
+    }
+    
+    // ===== Rent Requests =====
+    
+    match /rentrequest/{requestId} {
+      // Users can read their own requests, admins can read all
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        isSportsAdmin() ||
+        isAdmin()
+      );
+      
+      // Users can only create requests with their own userId
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.status == false;
+      
+      // Only admins can approve/reject requests
+      allow update: if isSportsAdmin() || isAdmin();
+      
+      // Never delete - keep for records
+      allow delete: if false;
+    }
+    
+    // ===== Return Requests =====
+    
+    match /returnRequests/{requestId} {
+      // Users can read their own requests, admins can read all
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        isSportsAdmin() ||
+        isAdmin()
+      );
+      
+      // Users can create return requests for their rentals
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.status == 'pending';
+      
+      // Only admins can approve/reject
+      allow update: if isSportsAdmin() || isAdmin();
+      
+      allow delete: if false;
+    }
+    
+    // ===== Rented Items =====
+    
+    match /rented/{rentalId} {
+      // Users can read their own rentals, admins can read all
+      allow read: if isAuthenticated() && (
+        isOwner(resource.data.userId) ||
+        isSportsAdmin() ||
+        isAdmin()
+      );
+      
+      // Only admins can create/modify rental records
+      allow write: if isSportsAdmin() || isAdmin();
+    }
+    
+    // ===== FAQ System =====
+    
+    match /faqRequests/{requestId} {
+      // Only FAQ admins can read requests
+      allow read: if isFaqAdmin() || isAdmin();
+      
+      // Authenticated users can submit requests
+      allow create: if isAuthenticated();
+      
+      // Only FAQ admins can update/delete
+      allow update, delete: if isFaqAdmin() || isAdmin();
+    }
+    
+    match /faqs/{faqId} {
+      // Anyone authenticated can read FAQs
+      allow read: if isAuthenticated();
+      
+      // Only FAQ admins can modify
+      allow write: if isFaqAdmin() || isAdmin();
+    }
+    
+    // ===== Event Management =====
+    
+    match /eventRequests/{requestId} {
+      // Authenticated users can read
+      allow read: if isAuthenticated();
+      
+      // Authenticated users can create requests
+      allow create: if isAuthenticated();
+      
+      // Only relevant admins can approve/reject
+      allow update, delete: if isAdmin() || 
+                               isSportsAdmin() || 
+                               isCultAdmin() || 
+                               isTechAdmin();
+    }
+    
+    match /events/{eventId} {
+      // Anyone authenticated can read events
+      allow read: if isAuthenticated();
+      
+      // Only admins can create/modify events
+      allow write: if isAdmin() || 
+                      isSportsAdmin() || 
+                      isCultAdmin() || 
+                      isTechAdmin();
+    }
+    
+    // ===== Lost & Found =====
+    
+    match /lostItems/{itemId} {
+      // Anyone authenticated can read
+      allow read: if isAuthenticated();
+      
+      // Authenticated users can create
+      allow create: if isAuthenticated();
+      
+      // Only poster or admin can update/delete
+      allow update, delete: if isAuthenticated() && (
+        resource.data.posterEmail == request.auth.token.email ||
+        isAdmin()
+      );
+    }
+    
+    match /foundItems/{itemId} {
+      // Anyone authenticated can read
+      allow read: if isAuthenticated();
+      
+      // Authenticated users can create
+      allow create: if isAuthenticated();
+      
+      // Only poster or admin can update/delete
+      allow update, delete: if isAuthenticated() && (
+        resource.data.posterEmail == request.auth.token.email ||
+        isAdmin()
+      );
+    }
+    
+    match /lostAndFoundLogs/{logId} {
+      // Only involved parties or admin can read
+      allow read: if isAuthenticated() && (
+        resource.data.posterEmail == request.auth.token.email ||
+        resource.data.claimerEmail == request.auth.token.email ||
+        isAdmin()
+      );
+      
+      // Authenticated users can create logs
+      allow create: if isAuthenticated();
+      
+      // Only admins can update/delete
+      allow update, delete: if isAdmin();
+    }
+    
+    // ===== Attendance Logs =====
+    
+    match /attendanceLogs/{logId} {
+      // Authenticated users can read
+      allow read: if isAuthenticated();
+      
+      // Authenticated users can create attendance logs
+      allow create: if isAuthenticated();
+      
+      // Only admins can modify/delete
+      allow update, delete: if isSportsAdmin() || isAdmin();
+    }
+    
+    // ===== Default Deny All =====
+    
+    // Explicitly deny access to any collection not listed above
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,15 +1,19 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { ThemedLayout } from '@/components/ThemedLayout';
+import { useDialog } from '@/components/DialogContext';
+import HapticPressable from '@/components/HapticPressable';
 import { ServiceLayout } from '@/components/ServiceLayout';
 import { useTheme } from '@/components/ThemeContext';
-import HapticPressable from '@/components/HapticPressable';
+import { ThemedLayout } from '@/components/ThemedLayout';
+import { useToast } from '@/components/ToastContext';
 import { db } from '@/firebaseConfig';
-import { collection, addDoc } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
+import { addDoc, collection } from 'firebase/firestore';
+import React, { useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 export default function AddFAQ() {
   const { theme } = useTheme();
+  const { showToast } = useToast();
+  const { showDialog } = useDialog();
   const router = useRouter();
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
@@ -17,7 +21,7 @@ export default function AddFAQ() {
 
   const handleSubmit = async () => {
     if (!question.trim() || !answer.trim()) {
-      Alert.alert('Error', 'Please fill in both question and answer');
+      showToast('Please fill in both question and answer', 'warning');
       return;
     }
 
@@ -31,10 +35,10 @@ export default function AddFAQ() {
         updatedAt: new Date(),
       });
 
-      Alert.alert(
-        'Success',
-        'FAQ added successfully',
-        [
+      showDialog({
+        title: 'Success',
+        message: 'FAQ added successfully',
+        buttons: [
           {
             text: 'OK',
             onPress: () => {
@@ -44,10 +48,10 @@ export default function AddFAQ() {
             }
           }
         ]
-      );
+      });
     } catch (error) {
       console.error('Error adding FAQ:', error);
-      Alert.alert('Error', 'Failed to add FAQ. Please try again.');
+      showToast('Failed to add FAQ. Please try again.', 'error');
     } finally {
       setSubmitting(false);
     }

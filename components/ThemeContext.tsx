@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 export interface Theme {
   background: string;
@@ -10,28 +10,34 @@ export interface Theme {
   placeholder: string;
   navbarBackground: string;
   navbarBorder: string;
+  secondaryText: string;
+  primary: string;
 }
 
 export const lightTheme: Theme = {
   background: '#f5f5f5',
   text: '#1a1a1a',
-  primaryText: '#404040',
+  primaryText: '#0F172A',
   inputBackground: '#ffffff',
   inputBorder: '#e0e0e0',
   placeholder: '#999',
   navbarBackground: '#f5f5f5',
   navbarBorder: 'transparent',
+  secondaryText: '#64748B',
+  primary: '#3B82F6',
 };
 
 export const darkTheme: Theme = {
   background: '#1a1a1a',
   text: '#ffffff',
-  primaryText: '#ffffff',
+  primaryText: '#F1F5F9',
   inputBackground: '#2a2a2a',
   inputBorder: '#404040',
   placeholder: '#d6d6d6ff',
   navbarBackground: '#1a1a1a',
   navbarBorder: 'transparent',
+  secondaryText: '#94A3B8',
+  primary: '#60A5FA',
 };
 
 interface ThemeContextType {

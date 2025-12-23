@@ -1,8 +1,8 @@
+import { OpenSans_300Light, OpenSans_400Regular, OpenSans_700Bold, useFonts } from '@expo-google-fonts/open-sans';
 import { SplashScreen, Stack } from 'expo-router';
 import { useEffect } from 'react';
-import { useFonts, OpenSans_400Regular, OpenSans_700Bold, OpenSans_300Light } from '@expo-google-fonts/open-sans';
 
-SplashScreen.preventAutoHideAsync();
+ 
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({

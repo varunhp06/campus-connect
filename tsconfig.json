@@ -7,12 +7,16 @@
         "./*"
       ]
     },
-    "types": ["expo-file-system"],
+    "types": [
+      "expo-file-system"
+    ]
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "src", 
-    "src/types"
+    "src",
+    "src/types",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
   ]
 }

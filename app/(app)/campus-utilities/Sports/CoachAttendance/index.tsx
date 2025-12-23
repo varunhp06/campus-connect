@@ -1,31 +1,26 @@
-import { Ionicons } from "@expo/vector-icons";
+import { ServiceLayout } from "@/components/ServiceLayout";
 import { useTheme } from "@/components/ThemeContext";
-import React, { useEffect, useState } from "react";
-import { db, auth } from "../../../../../firebaseConfig";
+import { ThemedLayout } from "@/components/ThemedLayout";
+import { Ionicons } from "@expo/vector-icons";
 import {
   collection,
   getDocs,
-  addDoc,
-  query,
   orderBy,
-  where,
-  Timestamp,
+  query,
+  Timestamp
 } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
 import {
-  ScrollView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Animated,
-  Modal,
   Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
-import { ThemedLayout } from "@/components/ThemedLayout";
-import { ServiceLayout } from "@/components/ServiceLayout";
-import QRCode from "react-native-qrcode-svg";
+import { auth, db } from "../../../../../firebaseConfig";
 
 const title = "Attendance Tracker";
 
@@ -53,6 +48,7 @@ export default function AttendancePage() {
   const modalAnim = useState(new Animated.Value(0))[0];
 
   const { theme, isDarkMode } = useTheme();
+  const { showToast } = useToast();
   const coach = auth.currentUser;
   const { width } = Dimensions.get("window");
   const userId = auth.currentUser?.uid;
@@ -83,7 +79,7 @@ export default function AttendancePage() {
       setAttendanceLogs(logs);
     } catch (error) {
       console.log("Error fetching logs:", error);
-      Alert.alert("Error", "Failed to fetch attendance logs");
+      showToast("Failed to fetch attendance logs", "error");
     } finally {
       setLoading(false);
     }
@@ -143,6 +139,27 @@ export default function AttendancePage() {
   const entryCount = todayLogs.filter((log) => log.type === "entry").length;
   const exitCount = todayLogs.filter((log) => log.type === "exit").length;
 
+  const groupedLogs = filteredLogs.reduce((acc, log) => {
+    const date = log.timestamp.toDate();
+    const isToday = new Date().toDateString() === date.toDateString();
+    const isYesterday = new Date(Date.now() - 86400000).toDateString() === date.toDateString();
+    
+    let key = date.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+    });
+
+    if (isToday) key = "Today";
+    else if (isYesterday) key = "Yesterday";
+    
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(log);
+    return acc;
+  }, {} as Record<string, AttendanceLog[]>);
+
   if (loading && attendanceLogs.length === 0) {
     return (
       <ThemedLayout
@@ -161,7 +178,7 @@ export default function AttendancePage() {
                 { backgroundColor: isDarkMode ? "#1E293B" : "#F1F5F9" },
               ]}
             >
-              <ActivityIndicator size="large" color="#228f16ff" />
+              <ActivityIndicator size="large" color="#139d04ff" />
             </View>
             <Text
               style={[
@@ -237,145 +254,69 @@ export default function AttendancePage() {
             ))}
           </View>
 
-          {/* Logs Tab */}
           {activeTab === "logs" && (
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}
             >
-              {/* Enhanced Stats */}
-              <View style={styles.statsRow}>
-                <View
-                  style={[
-                    styles.statCard,
-                    {
-                      backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
-                      borderColor: isDarkMode ? "#334155" : "#E2E8F0",
-                      shadowColor: isDarkMode ? "#000" : "#6366F1",
-                    },
-                  ]}
-                >
-                  <View style={[styles.statIcon, { backgroundColor: "rgba(42, 234, 12, 0.1)" }]}>
-                    <Ionicons name="enter-outline" size={24} color="#008526ff" />
-                  </View>
-                  <Text
-                    style={[
-                      styles.statValue,
-                      { color: isDarkMode ? "#F1F5F9" : "#1E293B" },
-                    ]}
-                  >
-                    {entryCount}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.statLabel,
-                      { color: isDarkMode ? "#64748B" : "#94A3B8" },
-                    ]}
-                  >
-                    Entries Today
-                  </Text>
+              {/* Stats Overview */}
+              <View style={styles.statsContainer}>
+                <View style={[styles.mainStatCard, { backgroundColor: isDarkMode ? "#1E293B" : "#00a53dff" }]}>
+                   <View style={styles.mainStatContent}>
+                      <Text style={[styles.mainStatLabel, { color: isDarkMode ? "#94A3B8" : "#dcfce7" }]}>Total Activity Today</Text>
+                      <Text style={[styles.mainStatValue, { color: isDarkMode ? "#FFFFFF" : "#FFFFFF" }]}>{todayLogs.length}</Text>
+                   </View>
+                   <View style={styles.mainStatIcon}>
+                      <Ionicons name="people" size={32} color={isDarkMode ? "#22c55e" : "#FFFFFF"} />
+                   </View>
                 </View>
 
-                <View
-                  style={[
-                    styles.statCard,
-                    {
-                      backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
-                      borderColor: isDarkMode ? "#334155" : "#E2E8F0",
-                      shadowColor: isDarkMode ? "#000" : "#6366F1",
-                    },
-                  ]}
-                >
-                  <View style={[styles.statIcon, { backgroundColor: "rgba(42, 234, 12, 0.1)" }]}>
-                    <Ionicons name="exit-outline" size={24} color="#2c8b00ff" />
+                <View style={styles.subStatsRow}>
+                  <View style={[styles.subStatCard, { backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF" }]}>
+                    <View style={styles.subStatIconBgEntry}>
+                      <Ionicons name="enter" size={20} color="#16a34a" />
+                    </View>
+                    <View>
+                      <Text style={[styles.subStatValue, { color: isDarkMode ? "#FFFFFF" : "#0f172a" }]}>{entryCount}</Text>
+                      <Text style={[styles.subStatLabel, { color: isDarkMode ? "#94A3B8" : "#64748B" }]}>Entries</Text>
+                    </View>
                   </View>
-                  <Text
-                    style={[
-                      styles.statValue,
-                      { color: isDarkMode ? "#F1F5F9" : "#1E293B" },
-                    ]}
-                  >
-                    {exitCount}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.statLabel,
-                      { color: isDarkMode ? "#64748B" : "#94A3B8" },
-                    ]}
-                  >
-                    Exits Today
-                  </Text>
-                </View>
-
-                <View
-                  style={[
-                    styles.statCard,
-                    {
-                      backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
-                      borderColor: isDarkMode ? "#334155" : "#E2E8F0",
-                      shadowColor: isDarkMode ? "#000" : "#6366F1",
-                    },
-                  ]}
-                >
-                  <View style={[styles.statIcon, { backgroundColor: "rgba(34, 197, 94, 0.1)" }]}>
-                    <Ionicons name="people-outline" size={24} color="#16A34A" />
+                  <View style={[styles.subStatCard, { backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF" }]}>
+                    <View style={styles.subStatIconBgExit}>
+                       <Ionicons name="exit" size={20} color="#ea580c" />
+                    </View>
+                    <View>
+                      <Text style={[styles.subStatValue, { color: isDarkMode ? "#FFFFFF" : "#0f172a" }]}>{exitCount}</Text>
+                      <Text style={[styles.subStatLabel, { color: isDarkMode ? "#94A3B8" : "#64748B" }]}>Exits</Text>
+                    </View>
                   </View>
-                  <Text
-                    style={[
-                      styles.statValue,
-                      { color: isDarkMode ? "#F1F5F9" : "#1E293B" },
-                    ]}
-                  >
-                    {todayLogs.length}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.statLabel,
-                      { color: isDarkMode ? "#64748B" : "#94A3B8" },
-                    ]}
-                  >
-                    Total Today
-                  </Text>
                 </View>
               </View>
 
-              {/* Enhanced Filter */}
-              <View
-                style={[
-                  styles.filterContainer,
-                  {
-                    backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
-                    borderColor: isDarkMode ? "#334155" : "#E2E8F0",
-                  },
-                ]}
-              >
+              {/* Filter Tabs */}
+              <View style={[styles.filterContainer, { backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF" }]}>
                 {[
-                  { key: "all", label: "All", color: "#228f16ff" },
-                  { key: "entry", label: "Entry", color: "#007548ff" },
-                  { key: "exit", label: "Exit", color: "#459400ff" },
+                  { key: "all", label: "All Logs" },
+                  { key: "entry", label: "Entries" },
+                  { key: "exit", label: "Exits" },
                 ].map((filter) => (
                   <TouchableOpacity
                     key={filter.key}
                     style={[
-                      styles.filterButton,
-                      filterType === filter.key && [
-                        styles.activeFilterButton,
-                        { backgroundColor: filter.color },
-                      ],
+                      styles.filterTab,
+                      filterType === filter.key && styles.activeFilterTab,
+                      filterType === filter.key && { backgroundColor: isDarkMode ? "#334155" : "#f0fdf4" }
                     ]}
                     onPress={() => setFilterType(filter.key as any)}
                   >
                     <Text
                       style={[
-                        styles.filterButtonText,
-                        {
-                          color:
-                            filterType === filter.key
-                              ? "#FFFFFF"
-                              : isDarkMode
-                              ? "#94A3B8"
-                              : "#64748B",
-                        },
+                        styles.filterTabText,
+                        { 
+                          color: filterType === filter.key 
+                            ? "#16a34a" 
+                            : isDarkMode ? "#94A3B8" : "#64748B" 
+                        }
                       ]}
                     >
                       {filter.label}
@@ -384,138 +325,103 @@ export default function AttendancePage() {
                 ))}
               </View>
 
-              {/* Enhanced Logs List */}
+              {/* Grouped Logs List */}
               <View style={styles.logsList}>
-                {filteredLogs.map((log, index) => (
-                  <Animated.View
-                    key={log.id}
-                    style={[
-                      styles.logCard,
-                      {
-                        backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
-                        borderColor: isDarkMode ? "#334155" : "#E2E8F0",
-                        shadowColor: isDarkMode ? "#000" : "#6366F1",
-                      },
-                    ]}
-                  >
-                    <View style={styles.logHeader}>
-                      <View
-                        style={[
-                          styles.logTypeIndicator,
-                          {
-                            backgroundColor:
-                              log.type === "entry" 
-                                ? "rgba(37, 99, 235, 0.1)" 
-                                : "rgba(234, 88, 12, 0.1)",
-                          },
-                        ]}
-                      >
-                        <Ionicons
-                          name={log.type === "entry" ? "enter-outline" : "exit-outline"}
-                          size={20}
-                          color={log.type === "entry" ? "#2563EB" : "#EA580C"}
-                        />
-                      </View>
-                      <View style={styles.logInfo}>
-                        <Text
-                          style={[
-                            styles.logName,
-                            { color: isDarkMode ? "#F1F5F9" : "#1E293B" },
-                          ]}
-                        >
-                          {log.coachName}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.logId,
-                            { color: isDarkMode ? "#64748B" : "#94A3B8" },
-                          ]}
-                        >
-                          ID: {log.coachId.slice(0, 8)}...
+                {Object.keys(groupedLogs).length > 0 ? (
+                  Object.entries(groupedLogs).map(([date, logs]) => (
+                    <View key={date} style={styles.dateGroup}>
+                      <View style={styles.dateHeader}>
+                        <View style={[styles.dateIndicator, { backgroundColor: isDarkMode ? "#334155" : "#e2e8f0" }]} />
+                        <Text style={[styles.dateHeaderText, { color: isDarkMode ? "#94A3B8" : "#64748B" }]}>
+                          {date}
                         </Text>
                       </View>
-                      <View
-                        style={[
-                          styles.logTypeBadge,
-                          {
-                            backgroundColor:
-                              log.type === "entry" 
-                                ? "rgba(37, 99, 235, 0.1)" 
-                                : "rgba(234, 88, 12, 0.1)",
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.logTypeBadgeText,
-                            {
-                              color: log.type === "entry" ? "#2563EB" : "#EA580C",
-                            },
-                          ]}
-                        >
-                          {log.type.toUpperCase()}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.logFooter}>
-                      <View style={styles.logTimeContainer}>
-                        <View style={styles.logTime}>
-                          <Ionicons
-                            name="calendar-outline"
-                            size={14}
-                            color={isDarkMode ? "#64748B" : "#94A3B8"}
-                          />
-                          <Text
+                      
+                      {logs.map((log, index) => (
+                        <View key={log.id} style={styles.timelineRow}>
+                          <View style={styles.timelineLineContainer}>
+                             <View style={[styles.timelineLine, { backgroundColor: isDarkMode ? "#334155" : "#e2e8f0" }]} />
+                             <View style={[
+                               styles.timelineDot,
+                               { 
+                                 backgroundColor: log.type === 'entry' ? '#16a34a' : '#ea580c',
+                                 borderColor: isDarkMode ? "#0f172a" : "#FFFFFF"
+                               }
+                             ]} />
+                          </View>
+                          
+                          <Animated.View
                             style={[
-                              styles.logTimeText,
-                              { color: isDarkMode ? "#64748B" : "#94A3B8" },
+                              styles.logCard,
+                              {
+                                backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
+                                borderColor: isDarkMode ? "#334155" : "#F1F5F9",
+                              },
                             ]}
                           >
-                            {formatDate(log.timestamp)}
-                          </Text>
+                            <View style={styles.logHeader}>
+                              <View style={styles.logHeaderLeft}>
+                                <Text
+                                  style={[
+                                    styles.logName,
+                                    { color: isDarkMode ? "#F1F5F9" : "#1E293B" },
+                                  ]}
+                                >
+                                  {log.coachName}
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.logId,
+                                    { color: isDarkMode ? "#64748B" : "#94A3B8" },
+                                  ]}
+                                >
+                                  {log.type === 'entry' ? 'Checked In' : 'Checked Out'} • {formatTime(log.timestamp)}
+                                </Text>
+                              </View>
+                              <View
+                                style={[
+                                  styles.statusBadge,
+                                  {
+                                    backgroundColor:
+                                      log.type === "entry" 
+                                        ? "rgba(22, 163, 74, 0.1)" 
+                                        : "rgba(234, 88, 12, 0.1)",
+                                  },
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.statusBadgeText,
+                                    {
+                                      color: log.type === "entry" ? "#16a34a" : "#ea580c",
+                                    },
+                                  ]}
+                                >
+                                  {log.type.toUpperCase()}
+                                </Text>
+                              </View>
+                            </View>
+                          </Animated.View>
                         </View>
-                        <View style={styles.logTime}>
-                          <Ionicons
-                            name="time-outline"
-                            size={14}
-                            color={isDarkMode ? "#64748B" : "#94A3B8"}
-                          />
-                          <Text
-                            style={[
-                              styles.logTimeText,
-                              { color: isDarkMode ? "#64748B" : "#94A3B8" },
-                            ]}
-                          >
-                            {formatTime(log.timestamp)}
-                          </Text>
-                        </View>
-                      </View>
-                      <Text
-                        style={[
-                          styles.logTimeAgo,
-                          { color: isDarkMode ? "#64748B" : "#94A3B8" },
-                        ]}
-                      >
-                        {getTimeAgo(log.timestamp)}
-                      </Text>
+                      ))}
                     </View>
-                  </Animated.View>
-                ))}
-
-                {filteredLogs.length === 0 && (
+                  ))
+                ) : (
                   <View style={styles.emptyState}>
-                    <Ionicons
-                      name="document-outline"
-                      size={64}
-                      color={isDarkMode ? "#475569" : "#CBD5E1"}
-                    />
+                    <View style={[styles.emptyStateIcon, { backgroundColor: isDarkMode ? "#1E293B" : "#F1F5F9" }]}>
+                      <Ionicons
+                        name="clipboard-outline"
+                        size={48}
+                        color={isDarkMode ? "#475569" : "#94A3B8"}
+                      />
+                    </View>
                     <Text
                       style={[
                         styles.emptyStateText,
-                        { color: isDarkMode ? "#94A3B8" : "#64748B" },
+                        { color: isDarkMode ? "#F1F5F9" : "#1E293B" },
                       ]}
                     >
-                      No attendance logs found
+                      No logs found
                     </Text>
                     <Text
                       style={[
@@ -523,7 +429,7 @@ export default function AttendancePage() {
                         { color: isDarkMode ? "#64748B" : "#94A3B8" },
                       ]}
                     >
-                      Attendance logs will appear here once recorded
+                      Activity will appear here once recorded
                     </Text>
                   </View>
                 )}
@@ -685,135 +591,190 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   // Enhanced Stats
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  statsContainer: {
     marginBottom: 24,
     gap: 12,
   },
-  statCard: {
-    flex: 1,
-    padding: 20,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: "center",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
+  mainStatCard: {
+    borderRadius: 20,
+    padding: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
   },
-  statIcon: {
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 12,
+  mainStatContent: {
+    gap: 4,
   },
-  statValue: {
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  statLabel: {
+  mainStatLabel: {
     fontSize: 14,
-    textAlign: "center",
+    fontWeight: '600',
   },
-  // Enhanced Filter
-  filterContainer: {
-    flexDirection: "row",
-    borderWidth: 1,
+  mainStatValue: {
+    fontSize: 36,
+    fontWeight: '800',
+  },
+  mainStatIcon: {
+    padding: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 16,
-    marginBottom: 20,
-    padding: 6,
-    justifyContent: "space-between",
   },
-  filterButton: {
+  subStatsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  subStatCard: {
     flex: 1,
-    borderRadius: 12,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  activeFilterButton: {
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
+    padding: 16,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
-  filterButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
+  subStatIconBgEntry: {
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(22, 163, 74, 0.1)',
   },
-  // Enhanced Logs
+  subStatIconBgExit: {
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(234, 88, 12, 0.1)',
+  },
+  subStatValue: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  subStatLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+
+  // Enhanced Tabs / Filter
+  filterContainer: {
+    flexDirection: 'row',
+    padding: 4,
+    borderRadius: 14,
+    marginBottom: 24,
+  },
+  filterTab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  activeFilterTab: {
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  filterTabText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  // Grouped Logs
   logsList: {
-    gap: 16,
-    marginBottom: 80,
+    paddingBottom: 20,
+  },
+  dateGroup: {
+    marginBottom: 20,
+  },
+  dateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 12,
+  },
+  dateIndicator: {
+    width: 20,
+    height: 1,
+  },
+  dateHeaderText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    minHeight: 80,
+  },
+  timelineLineContainer: {
+    width: 20,
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  timelineLine: {
+    width: 2,
+    flex: 1,
+    position: 'absolute',
+    top: 0,
+    bottom: -20,
+  },
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    marginTop: 24, // align with card center approx
+    backgroundColor: '#fff',
+    zIndex: 1,
   },
   logCard: {
-    padding: 20,
-    borderRadius: 20,
+    flex: 1,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 16,
     borderWidth: 1,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowRadius: 4,
     elevation: 2,
   },
   logHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  logTypeIndicator: {
-    padding: 12,
-    borderRadius: 12,
-    marginRight: 16,
-  },
-  logInfo: {
+  logHeaderLeft: {
     flex: 1,
+    gap: 4,
   },
   logName: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 4,
+    fontSize: 16,
+    fontWeight: '700',
   },
   logId: {
     fontSize: 13,
+    fontWeight: '500',
   },
-  logTypeBadge: {
+  statusBadge: {
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    borderRadius: 8,
   },
-  logTypeBadgeText: {
-    fontWeight: "700",
-    fontSize: 12,
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
-  logFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  logTimeContainer: {
-    flexDirection: "row",
-    gap: 16,
-  },
-  logTime: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  logTimeText: {
-    fontSize: 14,
-  },
-  logTimeAgo: {
-    fontSize: 14,
-    fontWeight: "500",
+  
+  // Empty State New
+  emptyStateIcon: {
+    padding: 24,
+    borderRadius: 32,
+    marginBottom: 16,
   },
   // Enhanced Empty State
   emptyState: {

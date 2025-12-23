@@ -1,31 +1,31 @@
-import { Ionicons } from "@expo/vector-icons";
+import { useDialog } from "@/components/DialogContext";
+import { ServiceLayout } from "@/components/ServiceLayout";
 import { useTheme } from "@/components/ThemeContext";
-import React, { useEffect, useState } from "react";
-import { db, auth } from "../../../../../firebaseConfig";
+import { ThemedLayout } from "@/components/ThemedLayout";
+import { useToast } from "@/components/ToastContext";
+import { Ionicons } from "@expo/vector-icons";
 import {
+  addDoc,
   collection,
   getDocs,
-  addDoc,
-  query,
   orderBy,
-  where,
-  Timestamp,
+  query,
+  Timestamp
 } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
 import {
-  ScrollView,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Animated,
-  Modal,
   Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
-import { ThemedLayout } from "@/components/ThemedLayout";
-import { ServiceLayout } from "@/components/ServiceLayout";
 import QRCode from "react-native-qrcode-svg";
+import { auth, db } from "../../../../../firebaseConfig";
 
 const title = "Attendance Tracker";
 
@@ -53,6 +53,8 @@ export default function AttendancePage() {
   const modalAnim = useState(new Animated.Value(0))[0];
 
   const { theme, isDarkMode } = useTheme();
+  const { showToast } = useToast();
+  const { showDialog } = useDialog();
   const coach = auth.currentUser;
   const { width } = Dimensions.get("window");
   const userId = auth.currentUser?.uid;
@@ -86,7 +88,7 @@ export default function AttendancePage() {
       setAttendanceLogs(filteredLogs);
     } catch (error) {
       console.log("Error fetching logs:", error);
-      Alert.alert("Error", "Failed to fetch attendance logs");
+      showToast("Failed to fetch attendance logs", "error");
     } finally {
       setLoading(false);
     }
@@ -132,7 +134,7 @@ export default function AttendancePage() {
       const scannedData = JSON.parse(data);
       
       if (scannedData.action !== "attendance") {
-        Alert.alert("Invalid QR", "This QR code is not for attendance tracking");
+        showToast("This QR code is not for attendance tracking", "warning");
         setTimeout(() => setScanned(false), 2000);
         return;
       }
@@ -145,22 +147,22 @@ export default function AttendancePage() {
         scannedBy: coach?.uid || "unknown",
       });
 
-      Alert.alert(
-        "Success",
-        `${scannedData.type === "entry" ? "Entry" : "Exit"} logged for ${scannedData.coachName}`,
-        [
+      showDialog({
+        title: 'Success',
+        message: `${scannedData.type === "entry" ? "Entry" : "Exit"} logged for ${scannedData.coachName}`,
+        buttons: [
           {
-            text: "OK",
+            text: 'OK',
             onPress: () => {
               setScanned(false);
               fetchAttendanceLogs();
             },
           },
-        ]
-      );
+        ],
+      });
     } catch (error) {
       console.log("Scan error:", error);
-      Alert.alert("Error", "Invalid QR code format");
+      showToast("Invalid QR code format", "error");
       setTimeout(() => setScanned(false), 2000);
     }
   };

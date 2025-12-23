@@ -1,32 +1,33 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Animated,
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  RefreshControl,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { ThemedLayout } from "@/components/ThemedLayout";
+import { useDialog } from "@/components/DialogContext";
 import { ServiceLayout } from "@/components/ServiceLayout";
 import { useTheme } from "@/components/ThemeContext";
-import { db, auth } from "../../../../../firebaseConfig";
+import { ThemedLayout } from "@/components/ThemedLayout";
+import { useToast } from "@/components/ToastContext";
+import { Ionicons } from "@expo/vector-icons";
 import {
-  collection,
-  addDoc,
-  Timestamp,
-  getDocs,
-  updateDoc,
-  doc,
-  serverTimestamp,
-  deleteDoc,
-  increment,
-  getDoc,
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    increment,
+    serverTimestamp,
+    Timestamp,
+    updateDoc,
 } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    Animated,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from "react-native";
+import { auth, db } from "../../../../../firebaseConfig";
 
 const title = "Approve Requests";
 
@@ -53,6 +54,8 @@ type TabType = "rent" | "return";
 
 export default function RequestApprovalPage() {
   const { theme, isDarkMode } = useTheme();
+  const { showToast } = useToast();
+  const { showDialog } = useDialog();
   const currentUser = auth.currentUser;
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -100,7 +103,7 @@ export default function RequestApprovalPage() {
       console.log(returnList);
     } catch (error) {
       console.error("Error fetching requests:", error);
-      Alert.alert("Error", "Failed to fetch requests");
+      showToast("Failed to fetch requests", "error");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -113,29 +116,59 @@ export default function RequestApprovalPage() {
   };
 
   const approveRentRequest = async (request: RentedRecord) => {
-    Alert.alert(
-      "Approve Rent Request",
-      `Approve rental request for ${request.userName || request.userId}?`,
-      [
+    showDialog({
+      title: 'Approve Rent Request',
+      message: `Approve rental request for ${request.userName || request.userId}?`,
+      buttons: [
         {
-          text: "Cancel",
-          style: "cancel",
+          text: 'Cancel',
+          style: 'cancel',
         },
         {
-          text: "Approve",
-          style: "default",
+          text: 'Approve',
+          style: 'default',
           onPress: async () => {
             try {
               setProcessingId(request.id);
 
-              // Update rent request status
+              // Validate stock availability for all items BEFORE making any changes
+              for (const item of request.items) {
+                const equipmentRef = doc(db, "equipment", item.id);
+                const equipmentSnap = await getDoc(equipmentRef);
+                
+                if (!equipmentSnap.exists()) {
+                  throw new Error(`Equipment "${item.name}" not found in inventory`);
+                }
+                
+                const equipmentData = equipmentSnap.data();
+                const currentStock = equipmentData.stock || 0;
+                const currentRented = equipmentData.rented || 0;
+                const available = currentStock - currentRented;
+                
+                if (available < item.quantity) {
+                  throw new Error(
+                    `Insufficient stock for "${item.name}". Available: ${available}, Requested: ${item.quantity}`
+                  );
+                }
+              }
+
+              // All validations passed - proceed with approval
+              // Update inventory for each item
+              for (const item of request.items) {
+                const equipmentRef = doc(db, "equipment", item.id);
+                await updateDoc(equipmentRef, {
+                  rented: increment(item.quantity),
+                });
+              }
+
+              // Update request status
               await updateDoc(doc(db, "rentrequest", request.id), {
                 status: "approved",
                 approvedAt: Timestamp.now(),
                 approvedBy: currentUser?.uid || "unknown",
               });
 
-              // Add to rented collection
+              // Create rental record
               await addDoc(collection(db, "rented"), {
                 userId: request.userId,
                 userName: request.userName || request.userId,
@@ -146,40 +179,35 @@ export default function RequestApprovalPage() {
                   currentUser?.displayName || currentUser?.email || "Admin",
               });
 
-              // Update equipment inventory (reduce available stock)
-              for (const item of request.items) {
-                const equipmentRef = doc(db, "equipment", item.id);
-                await updateDoc(equipmentRef, {
-                  rented: increment(item.quantity),
-                });
-              }
-
-              Alert.alert("Success", "Rent request approved successfully!");
+              showToast("Rent request approved successfully!", "success");
               fetchAllRequests();
-            } catch (error) {
+            } catch (error: any) {
               console.error("Error approving rent request:", error);
-              Alert.alert("Error", "Failed to approve request");
+              showToast(
+                error.message || "Failed to approve request",
+                "error"
+              );
             } finally {
               setProcessingId(null);
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const approveReturnRequest = async (request: RentedRecord) => {
-    Alert.alert(
-      "Approve Return Request",
-      `Approve return request for ${request.userName || request.userId}?`,
-      [
+    showDialog({
+      title: 'Approve Return Request',
+      message: `Approve return request for ${request.userName || request.userId}?`,
+      buttons: [
         {
-          text: "Cancel",
-          style: "cancel",
+          text: 'Cancel',
+          style: 'cancel',
         },
         {
-          text: "Approve",
-          style: "default",
+          text: 'Approve',
+          style: 'default',
           onPress: async () => {
             console.log("sdfg");
             try {
@@ -195,12 +223,10 @@ export default function RequestApprovalPage() {
                 throw new Error("Missing required fields in return request");
               }
 
-              // 1. Update equipment stock (reduce rented count)
               const equipmentRef = doc(db, "equipment", itemId);
               await updateDoc(equipmentRef, {
                 rented: increment(-quantity),
               });
-              // 2. Get rental record
               const rentalRef = doc(db, "rented", rentalId);
               console.log("sdfg");
               const rentalSnap = await getDoc(rentalRef);
@@ -212,7 +238,6 @@ export default function RequestApprovalPage() {
                   (i: RentedItem) => i.id !== itemId
                 );
 
-                // 3. Update or delete rental record
                 if (updatedItems.length === 0) {
                   await deleteDoc(rentalRef);
                 } else {
@@ -228,56 +253,65 @@ export default function RequestApprovalPage() {
                 approvedBy: currentUser?.uid || "unknown",
               });
 
-              Alert.alert("Success", "Return request approved successfully!");
+              showToast("Return request approved successfully!", "success");
               fetchAllRequests();
             } catch (error) {
               console.error("Error approving return request:", error);
-              Alert.alert("Error", "Failed to approve return request");
+              showToast("Failed to approve return request", "error");
             } finally {
               setProcessingId(null);
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const rejectRequest = async (request: RentedRecord, type: TabType) => {
-    Alert.alert(
-      "Reject Request",
-      `Are you sure you want to reject this ${type} request?`,
-      [
+    showDialog({
+      title: 'Reject Request',
+      message: `Are you sure you want to reject this ${type} request?`,
+      buttons: [
         {
-          text: "Cancel",
-          style: "cancel",
+          text: 'Cancel',
+          style: 'cancel',
         },
         {
-          text: "Reject",
-          style: "destructive",
+          text: 'Reject',
+          style: 'destructive',
           onPress: async () => {
             try {
               setProcessingId(request.id);
 
               const collectionName =
                 type === "rent" ? "rentrequest" : "returnRequests";
+              
+              // Mark request as rejected (keep for records)
+              // No inventory changes needed - inventory was never decremented on request creation
               await updateDoc(doc(db, collectionName, request.id), {
                 status: "rejected",
                 rejectedAt: Timestamp.now(),
                 rejectedBy: currentUser?.uid || "unknown",
               });
 
-              Alert.alert("Rejected", "Request has been rejected");
+              showToast(
+                `${type === "rent" ? "Rent" : "Return"} request rejected`,
+                "info"
+              );
               fetchAllRequests();
-            } catch (error) {
+            } catch (error: any) {
               console.error("Error rejecting request:", error);
-              Alert.alert("Error", "Failed to reject request");
+              showToast(
+                error.message || "Failed to reject request",
+                "error"
+              );
             } finally {
               setProcessingId(null);
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const toggleExpand = (id: string) => {
