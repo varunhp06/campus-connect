@@ -519,16 +519,7 @@ export const EventsManagementContent: React.FC = () => {
       showBottomImage={false}
     >
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <CustomAlert 
-          visible={alertConfig.visible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          onConfirm={alertConfig.onConfirm}
-          onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
-          confirmText={alertConfig.confirmText}
-          cancelText={alertConfig.cancelText}
-          confirmButtonColor={alertConfig.confirmButtonColor}
-        />
+        
 
         <View style={styles.content}>
           {availableTabs.length > 1 && (

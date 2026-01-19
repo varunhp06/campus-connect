@@ -234,7 +234,7 @@ export const AllEventsContent: React.FC = () => {
         <Text style={[styles.errorText, { color: theme.text }]}>Oops! {error}</Text>
         <TouchableOpacity style={styles.retryBtn} onPress={loadActivities}>
              <Text style={styles.retryText}>Try Again</Text>
-        </HapticPressable>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -253,16 +253,7 @@ export const AllEventsContent: React.FC = () => {
     >
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         
-        <CustomAlert 
-          visible={alertConfig.visible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          onConfirm={alertConfig.onConfirm}
-          onClose={() => setAlertConfig(prev => ({ ...prev, visible: false }))}
-          confirmText={alertConfig.confirmText}
-          cancelText={alertConfig.cancelText}
-          confirmButtonColor={alertConfig.confirmButtonColor}
-        />
+        
 
         <View style={styles.controlRow}>
             <View style={[styles.togglePill, { backgroundColor: inactivePillBg }]}>

@@ -117,16 +117,6 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
 
   return (
     <>
-      <CustomAlert
-        visible={showLogoutAlert}
-        title="Log Out"
-        message="Are you sure you want to sign out?"
-        onClose={() => setShowLogoutAlert(false)}
-        onConfirm={confirmLogout}
-        confirmText="Log Out"
-        cancelText="Cancel"
-        confirmButtonColor='#ef4444'
-      />
 
       <Animated.View 
         style={[styles.overlay, { opacity: overlayOpacity }]} 
@@ -199,7 +189,7 @@ export const SideDrawer: React.FC<SideDrawerProps> = ({ isOpen, onClose }) => {
                 styles.logoutItem,
                 { opacity: pressed ? 0.7 : 1 }
               ]}
-              onPress={handleLogoutPress}
+              onPress={handleLogout}
             >
               <View style={[styles.iconBox, { backgroundColor: '#fee2e2' }]}>
                 <Ionicons name="log-out" size={20} color="#ef4444" />
